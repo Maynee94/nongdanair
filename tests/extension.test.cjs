@@ -57,28 +57,35 @@ test('ô URL thuộc Content Crypto và đi vào cấu hình nguồn tin', () =>
   const dashboard = fs.readFileSync(path.join(root, 'dashboard.js'), 'utf8');
   assert.ok(dashboard.includes("['cryptoWebsiteUrls', 'websiteUrls']"));
 });
-test('nghỉ chuyển tab vừa đăng sang Home, không mở tab mới, Dừng dọn tab', async () => {
-  const removed = [], messages = [], logs = [], navigated = [];
-  const c = vm.createContext({ Date, cryptoStopRequested: false,
-    cryptoNum: (v, def) => v === undefined ? def : v,
-    waitUrlScanTab: async () => {},
-    waitMs: async () => { c.cryptoStopRequested = true; },
-    cryptoLog: async message => logs.push(message),
-    cryptoSendToTab: async (id, payload) => { messages.push(payload); return {success:true}; },
-    chrome: { tabs: { create: async () => { throw new Error('Không được mở tab mới'); }, update: async (id, args) => navigated.push({id, ...args}), get: async () => ({id:99}),
-      sendMessage: async (_, payload) => messages.push(payload), remove: async id => removed.push(id) } }
+test('lướt Home tới alarm kế tiếp, trả ngay và giữ tab để lượt quét dùng lại', async () => {
+  const messages = [], removed = [], navigated = [], registered = [], store = {};
+  const next = Date.now() + 60 * 60000;
+  const c = vm.createContext({ Date, cryptoStopRequested: false, CRYPTO_ALARM: 'poll', TAB_CTX: {SCHEDULE:'schedule'},
+    waitUrlScanTab: async () => {}, cryptoLog: async () => {},
+    registerAutomationTab: (id,ctx) => registered.push({id,ctx}), clearAutomationTab: () => {},
+    cryptoSendToTab: async (id,payload) => {messages.push(payload); return {success:true};},
+    chrome: {
+      alarms: {get:async()=>({scheduledTime:next})},
+      storage:{session:{get:async()=>({...store}),set:async data=>Object.assign(store,data),remove:async key=>delete store[key]}},
+      tabs:{create:async()=>{throw Error('Không được tạo tab mới');},update:async(id,args)=>navigated.push({id,...args}),
+        sendMessage:async(_,payload)=>messages.push(payload),remove:async id=>removed.push(id)}
+    }
   });
-  const source = fs.readFileSync(path.join(root, 'background.js'), 'utf8');
-  vm.runInContext(source.slice(source.indexOf('async function cryptoRestAfterPosting('), source.indexOf('chrome.runtime.onMessage.addListener', source.indexOf('async function cryptoRestAfterPosting('))), c);
-  await c.cryptoRestAfterPosting({restMinutes:1}, 99);
-  assert.deepEqual(navigated, [{id:99, url:"https://x.com/home", active:true}]);
-  assert.equal(messages[0].action, 'HUMAN_BROWSE_HOME_START');
-  assert.equal(messages[0].durationMs, 60000);
-  assert.equal(messages[1].action, 'HUMAN_BROWSE_HOME_STOP');
-  assert.deepEqual(removed, [99]);
-  c.cryptoStopRequested = false;
-  await c.cryptoRestAfterPosting({restMinutes:0}, 99);
-  assert.equal(removed.length, 1);
+  const source=fs.readFileSync(path.join(root,'background.js'),'utf8');
+  const a=source.indexOf('async function stopCryptoRest(');
+  const b=source.indexOf('chrome.runtime.onMessage.addListener',a);
+  vm.runInContext(source.slice(a,b),c);
+  assert.equal(await c.cryptoRestAfterPosting({enabled:true},99),true);
+  assert.deepEqual(navigated,[{id:99,url:'https://x.com/home',active:true}]);
+  assert.ok(messages[0].durationMs > 3590000 && messages[0].durationMs <= 3600000);
+  assert.equal(store.cryptoRestTabId,99); assert.equal(removed.length,0);
+  await c.stopCryptoRest(false);
+  assert.equal(messages[1].action,'HUMAN_BROWSE_HOME_STOP');
+  assert.equal(store.cryptoRestTabId,undefined); assert.equal(removed.length,0);
+  assert.equal(await c.cryptoRestAfterPosting({enabled:false},99),false);
+  store.cryptoRestTabId=99;
+  await c.stopCryptoRest(true);
+  assert.deepEqual(removed,[99]);
 });
 test('hai tỉ lệ là nhóm riêng, phần còn lại chỉ đọc và giới hạn tổng 100%', () => {
   const c = vm.createContext({});

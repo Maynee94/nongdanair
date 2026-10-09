@@ -498,7 +498,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === 'CRYPTO_STOP') {
     cryptoStopRequested = true;
-    sendResponse({ success: true, running: cryptoRunning });
+    stopCryptoRest(true).then(resting => sendResponse({ success: true, running: cryptoRunning || resting }));
     return true;
   }
 
@@ -2346,7 +2346,6 @@ const CRYPTO_DEFAULT_CFG = {
   accounts: '',
   feeds: '',
   websiteUrls: '',
-  restMinutes: 1,
   focus: '',
   keywordsExclude: 'giveaway, airdrop, follow + rt, whitelist, referral',
   persona: '',
@@ -2720,7 +2719,9 @@ async function handleCryptoRun({ dryRun } = {}) {
   const ctx = TAB_CTX.SCHEDULE;
   const stats = { collected: 0, fresh: 0, picked: 0, posted: 0, drafts: 0, skipped: 0, failed: 0 };
   let paused = false;
+  let resting = false;
   try {
+    await stopCryptoRest(false);
     const cfg = await cryptoGetCfg();
     if (dryRun === undefined) dryRun = cfg.draftMode !== false; // lượt tự động theo công tắc "Duyệt bản nháp"
     const accounts = cryptoNormAccounts(cfg.accounts);
@@ -2845,13 +2846,13 @@ async function handleCryptoRun({ dryRun } = {}) {
     await cryptoLog(dryRun
       ? `Xong chạy thử: ${stats.drafts} bản nháp (xem bên dưới), ${stats.skipped} bỏ qua, ${stats.failed} lỗi.`
       : `Xong: ${stats.posted} đã đăng, ${stats.skipped} bỏ qua, ${stats.failed} lỗi.`, stats.failed ? 'error' : 'success');
-    if (stats.posted > 0 && !cryptoStopRequested) await cryptoRestAfterPosting(cfg, tabId);
+    if (stats.posted > 0 && !cryptoStopRequested) resting = await cryptoRestAfterPosting(cfg, tabId);
     return stats;
   } catch (err) {
     await cryptoLog(`❌ ${err.message}`, 'error');
     throw err;
   } finally {
-    await closeAutomationWindow(ctx).catch(() => {});
+    if (!resting) await closeAutomationWindow(ctx).catch(() => {});
     if (paused) resumeAllFlowsAfterSchedule();
     stopKeepAlive();
     cryptoRunning = false;
@@ -2866,7 +2867,9 @@ async function handleCryptoPostDraft({ id, text }) {
   startKeepAlive();
   const ctx = TAB_CTX.SCHEDULE;
   let paused = false;
+  let resting = false;
   try {
+    await stopCryptoRest(false);
     const cfg = await cryptoGetCfg();
     const state = await cryptoLoadState();
     const draft = state.drafts.find((d) => d.id === id);
@@ -2885,12 +2888,12 @@ async function handleCryptoPostDraft({ id, text }) {
     await cryptoSavePosted(state.posted, { ts: Date.now(), text: finalText, src: draft.url || draft.source });
     await chrome.storage.local.set({ [CRYPTO_DRAFTS_KEY]: state.drafts.filter((d) => d.id !== id) });
     await cryptoLog('✅ Đã đăng bản nháp.', 'success');
-    if (!cryptoStopRequested) await cryptoRestAfterPosting(cfg, draftRes.tabId);
+    if (!cryptoStopRequested) resting = await cryptoRestAfterPosting(cfg, draftRes.tabId);
   } catch (err) {
     await cryptoLog(`❌ ${err.message}`, 'error');
     throw err;
   } finally {
-    await closeAutomationWindow(ctx).catch(() => {});
+    if (!resting) await closeAutomationWindow(ctx).catch(() => {});
     if (paused) resumeAllFlowsAfterSchedule();
     stopKeepAlive();
     cryptoRunning = false;
@@ -2902,10 +2905,13 @@ async function cryptoApplySchedule() {
   await chrome.alarms.clear('ndan_grok_poll').catch(() => {});
   await chrome.alarms.clear(CRYPTO_ALARM);
   const cfg = await cryptoGetCfg();
-  if (!cfg.enabled) return null;
+  if (!cfg.enabled) { await stopCryptoRest(true); return null; }
   const mins = cryptoNum(cfg.pollMinutes, 60, 10, 1440);
-  chrome.alarms.create(CRYPTO_ALARM, { delayInMinutes: mins, periodInMinutes: mins });
-  return Date.now() + mins * 60 * 1000;
+  await chrome.alarms.create(CRYPTO_ALARM, { delayInMinutes: mins, periodInMinutes: mins });
+  const next = Date.now() + mins * 60 * 1000;
+  const rest = await chrome.storage.session.get('cryptoRestTabId');
+  if (rest.cryptoRestTabId) await cryptoRestAfterPosting(cfg, rest.cryptoRestTabId);
+  return next;
 }
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -3653,31 +3659,46 @@ async function handleHomeInteractReply(tabId, source, postId, replyText, likeAft
   await homeTabMessage(tabId, { action: 'HOME_REPLY_TO_POST', postId, replyText, likeAfterReply: !!likeAfterReply });
   return { recovered };
 }
-// Dùng lại đúng tab vừa đăng thành công, chuyển hướng sang Home để nghỉ.
+// Lướt Home trong thời gian chờ alarm, không giữ cryptoRunning để alarm chạy được.
+async function stopCryptoRest(closeTab = false) {
+  const saved = await chrome.storage.session.get('cryptoRestTabId');
+  const tabId = saved.cryptoRestTabId;
+  if (!tabId) return false;
+  await chrome.storage.session.remove('cryptoRestTabId');
+  await chrome.tabs.sendMessage(tabId, { action: 'HUMAN_BROWSE_HOME_STOP' }).catch(() => {});
+  if (closeTab) {
+    await chrome.tabs.remove(tabId).catch(() => {});
+    clearAutomationTab(tabId);
+  } else {
+    registerAutomationTab(tabId, TAB_CTX.SCHEDULE);
+  }
+  return true;
+}
+
 async function cryptoRestAfterPosting(cfg, tabId) {
-  const minutes = cryptoNum(cfg.restMinutes, 1, 0, 60);
-  if (!minutes || cryptoStopRequested) return;
-  if (!tabId) return;
-  const tab = { id: tabId };
+  if (!cfg.enabled || cryptoStopRequested || !tabId) return false;
+  const alarm = await chrome.alarms.get(CRYPTO_ALARM);
+  if (!alarm || alarm.scheduledTime <= Date.now()) return false;
   try {
-    await chrome.tabs.update(tab.id, { url: 'https://x.com/home', active: true });
-    await waitUrlScanTab(tab.id);
-    if (cryptoStopRequested) return;
-    const response = await cryptoSendToTab(tab.id, {
-      action: 'HUMAN_BROWSE_HOME_START', durationMs: minutes * 60000, alreadyHome: true,
+    await chrome.tabs.update(tabId, { url: 'https://x.com/home', active: true });
+    await waitUrlScanTab(tabId);
+    if (cryptoStopRequested) return false;
+    const latest = await chrome.alarms.get(CRYPTO_ALARM);
+    const remainingMs = (latest?.scheduledTime || 0) - Date.now();
+    if (remainingMs <= 0) return false;
+    const response = await cryptoSendToTab(tabId, {
+      action: 'HUMAN_BROWSE_HOME_START', durationMs: remainingMs, alreadyHome: true,
     });
     if (!response.success) throw new Error(response.error || 'Không khởi động được lướt Home');
-    await cryptoLog(`Đã đăng xong; lướt Home khi nghỉ ${minutes} phút. Bấm Dừng để kết thúc.`);
-    const deadline = Date.now() + minutes * 60000;
-    while (!cryptoStopRequested && Date.now() < deadline) {
-      if (!await chrome.tabs.get(tab.id).catch(() => null)) break;
-      await waitMs(Math.min(500, Math.max(0, deadline - Date.now())));
-    }
+    await chrome.storage.session.set({ cryptoRestTabId: tabId });
+    registerAutomationTab(tabId, TAB_CTX.SCHEDULE);
+    if (cryptoStopRequested) { await stopCryptoRest(true); return false; }
+    await cryptoLog(`Đã đăng xong; lướt Home đến lượt quét tiếp theo lúc ${new Date(latest.scheduledTime).toLocaleString('vi-VN')}.`);
+    return true;
   } catch (error) {
-    await cryptoLog(`Không lướt Home được khi nghỉ: ${error.message}`, 'error');
-  } finally {
-    await chrome.tabs.sendMessage(tab.id, { action: 'HUMAN_BROWSE_HOME_STOP' }).catch(() => {});
-    await chrome.tabs.remove(tab.id).catch(() => {});
+    await stopCryptoRest(false);
+    await cryptoLog(`Không lướt Home được khi chờ lượt tiếp theo: ${error.message}`, 'error');
+    return false;
   }
 }
 

@@ -51,3 +51,12 @@ xác trong phiên ngắn. 7 test API mô phỏng đạt; chưa thử trên Chrom
 
 Đã gộp url_scan.js vào background.js; post_text.js vào background.js và dashboard.js.
 Không cần giữ hai file helper cũ. dashboard.js vẫn phải tách khỏi HTML theo CSP của Chrome Manifest V3; background và content chạy ở ngữ cảnh khác nhau.
+
+
+Cập nhật nghỉ theo lịch quét: đã bỏ ô thời lượng nghỉ riêng. Sau khi đăng thành
+công và có bật tự động quét, tab vừa đăng chuyển sang Home và lướt tới mốc
+crypto alarm tiếp theo. Lượt đăng trả về ngay, không giữ cryptoRunning trong
+thời gian chờ. Khi quét lần sau, dừng lướt nhưng giữ tab để dùng lại cho quét X
+và đăng. Tắt tự động hoặc bấm Dừng sẽ kết thúc lướt và đóng tab nghỉ. Thay đổi
+chu kỳ quét sẽ cập nhật thời gian lướt theo lịch mới. Nếu tự động tắt hoặc không
+có alarm kế tiếp, không lướt Home sau lần đăng thủ công.

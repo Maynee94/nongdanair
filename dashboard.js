@@ -1995,14 +1995,14 @@ async function getActiveGalleryImage(storageKey) {
 
 // ============== CONTENT CRYPTO: QUÉT TIN (X + RSS) -> AI VIẾT LẠI THEO GIỌNG CỦA TÔI -> ĐĂNG X ==============
 const CRYPTO_DEFAULTS = {
-  enabled: false, pollMinutes: 60, accounts: '', feeds: '', websiteUrls: '', restMinutes: 1, focus: '',
+  enabled: false, pollMinutes: 60, accounts: '', feeds: '', websiteUrls: '', focus: '',
   keywordsExclude: 'giveaway, airdrop, follow + rt, whitelist, referral',
   persona: '', voiceSamples: '', voiceSampleList: [], language: 'Tiếng Việt', extraRules: '',
   maxPostsPerDay: 8, maxChars: 270, addSourceLink: false, copyImage: true, draftMode: true,
 };
 // [id ô nhập, khoá trong cryptoCfg]
 const CRYPTO_TEXT_FIELDS = [
-  ['cryptoWebsiteUrls', 'websiteUrls'], ['cryptoRestMinutes', 'restMinutes'],
+  ['cryptoWebsiteUrls', 'websiteUrls'],
   ['cryptoFocus', 'focus'],
   ['cryptoKwExclude', 'keywordsExclude'],
   ['cryptoPersona', 'persona'], ['cryptoLanguage', 'language'],
