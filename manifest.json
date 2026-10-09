@@ -1,0 +1,92 @@
+{
+  "manifest_version": 3,
+  "name": "NDAN CREATOR CONTENT X",
+  "version": "3.10.0",
+  "description": "Tạo & đăng content crypto cho X bằng AI. Hỗ trợ Clone KOLs theo dự án và Quét bài đăng dự án không ghim.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "NDAN Creator Content X",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs",
+    "scripting",
+    "alarms",
+    "system.display",
+    "unlimitedStorage",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://pbs.twimg.com/*",
+    "https://api.openai.com/*",
+    "https://chatgpt.com/*",
+    "https://gemini.google.com/*",
+    "https://*.oaiusercontent.com/*",
+    "https://*.googleusercontent.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.deepseek.com/*",
+    "https://grok.com/*",
+    "https://*.grok.com/*",
+    "https://*.x.ai/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "side_panel": {
+    "default_path": "dashboard.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "content_chatgpt.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "content_gemini.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://grok.com/*"
+      ],
+      "js": [
+        "content_grok.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

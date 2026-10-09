@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NDAN Creator Content X</title>
+  <style>
+/* dashboard.css - NDAN CREATOR CONTENT X */
+
+:root {
+  --bg: #0f1117;
+  --panel: #171a23;
+  --panel-alt: #1e222d;
+  --border: #2a2f3d;
+  --text: #e8eaf0;
+  --text-dim: #9aa1b2;
+  --primary: #7c5cff;
+  --primary-hover: #6a48f2;
+  --danger: #ff5c6c;
+  --success: #3ddc97;
+  --fail: #ff5c6c;
+  --skip: #ffb84d;
+  --radius: 10px;
+}
+
+/* Giao diện sáng - bật qua nú☀️ trên header, lưu lại lựa chọn để lần sau mở lại vẫn giữ nguyên. */
+body[data-theme="light"] {
+  --bg: #f4f5fa;
+  --panel: #ffffff;
+  --panel-alt: #eef0f6;
+  --border: #dde1ea;
+  --text: #1b1e27;
+  --text-dim: #6b7280;
+  --primary: #7c5cff;
+  --primary-hover: #6a48f2;
+  --danger: #e0475a;
+  --success: #16a673;
+  --fail: #e0475a;
+  --skip: #d9822b;
+}
+body[data-theme="light"] input[type="datetime-local"],
+body[data-theme="light"] input[type="time"] { color-scheme: light; }
+
+* { box-sizing: border-box; }
+html { overflow-x: hidden; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  /* Trước đây width: 380px CỐ ĐỊNH -> khi side panel hẹp hơn 380px (hoặc bị thanh cuộn dọc
+     chiếm ~15px) nội dung bị tràn sang phải: hiện thanh kéo ngang, nút đổi giao diện ở góc
+     phải bị cắt. Nay co giãn theo đúng bề rộng thật của panel. */
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+h1, h2, h3, h4 { margin: 0 0 8px; font-weight: 700; }
+
+/* Theme toggle - nổi ở góc trên bên phải khu vực nội dung, ngang hàng với tiêu đề
+   trang hiện tại (HOME/Setting/Tiện Ích) vì content-header luôn nằm ở đúng vị trí này
+   bất kể đang mở tab nào (main-content position:relative + toggle position:absolute). */
+.theme-toggle-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.theme-toggle-btn:hover { border-color: var(--primary); }
+.main-theme-toggle {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 50;
+}
+
+/* Tabs chính - cố định dưới cùng như thanh nav app di động */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 500;
+}
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 9px 4px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.tab-btn:hover { background: var(--panel-alt); }
+.tab-btn.active { background: rgba(124, 92, 255, 0.14); border-color: var(--primary); color: var(--primary); }
+.tab-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+.tab-icon svg,
+.accordion-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.main-content { position: relative; padding: 14px; padding-bottom: 90px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.content-header h1 { font-size: 18px; margin-bottom: 12px; padding-right: 40px; text-transform: uppercase; }
+
+/* Sub tabs - phóng to thành nút bấm lớn thay vì gạch chân nhỏ */
+.sub-tab-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.sub-tab-btn {
+  flex: 1;
+  padding: 14px 10px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.sub-tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.sub-sub-btn { font-size: 12.5px; padding: 12px 8px; }
+
+.subtab-content, .subsubtab-content { display: none; }
+.subtab-content.active, .subsubtab-content.active { display: block; }
+
+/* Cards */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.card h3 { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+.card h4 { font-size: 13.5px; font-weight: 700; color: var(--text); }
+
+/* Forms */
+.form-group { margin-bottom: 14px; }
+.form-group:last-child { margin-bottom: 0; }
+.form-group label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+.section-label,
+.form-group .section-label { font-size: 13.5px; font-weight: 700; color: var(--text) !important; }
+/* Nhãn tiêu đề trực tiếp của từng ô cài đặt (không có class section-label) cũng in đậm + cỡ chữ đồng bộ;
+   nhãn phụ (sub-label: Tối thiểu, Tối đa, Ngày, Giờ...) giữ nhỏ như cũ. */
+.form-group > label:not(.sub-label) { font-size: 13.5px; font-weight: 700; color: var(--text); }
+.sub-label { margin-top: 10px; }
+
+input[type="text"],
+input[type="password"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  padding: 9px 10px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12.5px;
+  font-family: inherit;
+  outline: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+input[type="datetime-local"],
+input[type="time"] { color-scheme: dark; }
+/* Ẩn nút mũi tên tăng/giảm mặc định của trình duyệt cho ô Giờ/Phút/Giây - để trông giống
+   1 ô nhập số bình thường thay vì spinner, đỡ chiếm chỗ trên hàng ngang hẹp. */
+input[type="number"].hms-input::-webkit-outer-spin-button,
+input[type="number"].hms-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"].hms-input { -moz-appearance: textfield; text-align: center; }
+
+/* Chọn ngày giờ hẹn đăng - dạng dropdown tách riêng cho dễ hiểu thay vì input datetime-local */
+.schedule-date-row, .schedule-time-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.schedule-field { flex: 1; min-width: 0; }
+.schedule-field label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+.schedule-field select, .schedule-field input[type="number"] { width: 100%; padding: 9px 6px; }
+textarea { min-height: 70px; resize: vertical; }
+textarea[readonly] { color: var(--text-dim); background: var(--bg); cursor: default; }
+
+.kol-input-row { display: flex; gap: 8px; }
+.kol-input-row input { flex: 1; }
+
+/* Chips */
+.chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 7px 12px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover { border-color: var(--primary); }
+.chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* Select-collapse: nhóm chip nhấn để mở ra rồi chọn, thay cho việc hiện hết chip
+   cùng lúc chiếm nhiều diện tích. Đóng lại ngay khi đã chọn xong 1 lựa chọn. */
+.select-collapse { position: relative; }
+.select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.select-trigger:hover { border-color: var(--primary); }
+.select-collapse.open .select-trigger { border-color: var(--primary); }
+.select-trigger-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select-trigger-chevron {
+  color: var(--text-dim);
+  font-size: 11px;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.select-collapse.open .select-trigger-chevron { transform: rotate(180deg); }
+.select-options {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 60;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.4);
+}
+.select-collapse.open .select-options { display: flex; }
+
+/* Tag inputs */
+.tag-input-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 5px 4px 11px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 12px;
+}
+/* Nút x xoá: hình tròn nền tối, dấu x to + đậm nên nổi rõ trên nền tím của chip; rê chuột đổi đỏ */
+.tag-rm {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.32);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 0 2px;
+  transition: background 0.15s, transform 0.1s;
+}
+.tag-rm:hover { background: var(--danger); }
+
+/* Tên trong chip: quá dài thì cắt "..." thay vì tràn khỏi ô (cần khi 2 ô đặt cạnh nhau) */
+.tag-item { max-width: 100%; min-width: 0; }
+.tag-item .tag-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.tag-input-box input { text-overflow: ellipsis; }
+
+/* Chip username CHỌN ĐƯỢC (Username dự án / KOL): bấm vào tên để chọn / bỏ chọn - giống chọn logo & nhân vật.
+   Đang chọn = nền tím đặc; đã bỏ chọn = viền nét đứt, mờ (vẫn giữ trong danh sách, chỉ không dùng để quét). */
+.tag-item.selectable { cursor: pointer; border: 1px solid var(--primary); user-select: none; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+.tag-item.selectable.off { background: transparent; color: var(--text-dim); border: 1px dashed var(--border); }
+.tag-item.selectable.off .tag-rm { background: var(--panel-alt); color: var(--text-dim); }
+.tag-item.selectable.off .tag-rm:hover { background: var(--danger); color: #fff; }
+.tag-select-hint { margin-top: 8px; font-size: 11.5px; color: var(--text-dim); }
+
+/* 2 khu vực đặt cạnh nhau (Username dự án | KOL, Tối thiểu | Tối đa) thay vì xếp dọc */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+.two-col > .col { min-width: 0; }
+.two-col > .col > label { font-size: 13.5px; font-weight: 700; color: var(--text); margin-top: 0; }
+.two-col > .col > label.sub-label { font-size: 12px; font-weight: 400; color: var(--text-dim); margin-bottom: 6px; }
+.two-col .tag-input-box { padding: 6px; }
+.two-col .tag-input-box input { min-width: 0; width: 100%; flex: 1 1 100%; }
+
+/* Nhóm chip luôn nằm trên 1 hàng (Quy tắc Follow) */
+.chip-group-one-row { flex-wrap: nowrap; gap: 4px; }
+.chip-group-one-row .chip {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 4px;
+  font-size: 10.5px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tag-rm:active { transform: scale(0.9); }
+.tag-input-box input {
+  flex: 1;
+  min-width: 120px;
+  border: none;
+  background: transparent;
+  padding: 4px;
+}
+
+/* Danh sách Username của Tương Tác Username: người dùng có thể dán tới vài trăm username
+   cùng lúc - nếu để .tag-list rộng tự do như các ô khác thì khung này sẽ cao vô hạn theo
+   số lượng, chiếm hết cả trang. Giới hạn chiều cao + cho cuộn dọc bên trong, và thu nhỏ
+   từng chip lại (chữ + khoảng đệm nhỏ hơn chip thường) để nhìn gọn hơn khi có nhiều username. */
+#usernameInteractListInput { min-height: 140px; }
+
+/* Buttons */
+.btn {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-run { background: var(--success); color: #06231a; }
+.btn-run-stop { background: var(--danger); color: #fff; }
+.btn-run,
+.btn-run-stop { padding: 14px 18px; font-size: 14.5px; letter-spacing: 0.3px; }
+
+.action-buttons { display: flex; gap: 8px; }
+.action-buttons .btn { flex: 1; }
+.run-buttons .btn { flex: 1; }
+.run-control-card .run-buttons { margin-bottom: 12px; }
+
+.hidden { display: none !important; }
+
+/* Result / preview */
+.content-preview {
+  padding: 10px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 60px;
+  white-space: pre-wrap;
+}
+.media-preview-container { margin-top: 10px; }
+.media-preview-container img {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+/* Run control / countdown / stats */
+.run-control-card { text-align: center; }
+.countdown-box {
+  margin-top: 10px;
+  padding: 8px;
+  background: var(--panel-alt);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.hint-text { font-size: 11.5px; color: var(--text-dim); margin: 10px 0; }
+.label-with-link { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.label-with-link .section-label { margin-bottom: 0; }
+.field-link { font-size: 11px; color: var(--primary); text-decoration: none; white-space: nowrap; }
+.field-link:hover { text-decoration: underline; }
+
+.progress-stats { display: flex; gap: 8px; margin-bottom: 10px; }
+.stat-box {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  border-radius: 8px;
+  background: var(--panel-alt);
+}
+.stat-label { font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+.stat-value { font-size: 16px; font-weight: 700; }
+.stat-success .stat-value { color: var(--success); }
+.stat-fail .stat-value { color: var(--fail); }
+.stat-skip .stat-value { color: var(--skip); }
+.stat-remain .stat-value { color: var(--text); }
+.stat-fail-clickable { cursor: pointer; transition: background 0.15s ease; }
+.stat-fail-clickable:hover { background: color-mix(in srgb, var(--fail) 18%, transparent); }
+
+/* Hàng nút CHẠY / STOP + đồng hồ đếm ngược (kiểu mm:ss) */
+.run-buttons-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.run-buttons-row .btn.full { flex: 1; }
+/* Đồng hồ đếm ngược đặt cạnh nút DỪNG của Tương tác Home:
+   chỉ hiện khi nút DỪNG đang hiện, tức là lúc đang chạy. */
+.run-buttons .timer-box { display: none; flex: none; }
+.run-buttons .btn-run-stop:not(.hidden) + .timer-box { display: flex; align-items: center; justify-content: center; }
+
+/* Chân khung "Danh Sách Chạy": trái = link chờ chạy, phải = tổng link đã chạy trong 24h */
+.queue-footer { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.queue-footer .hint-text { margin: 10px 0 0; }
+.queue-footer .queue-stat { font-size: 13px; font-weight: 800; color: var(--text); }
+/* Số lượng trong hàng đợi: có màu riêng + nảy nhẹ khi đổi giá trị */
+.queue-num { display: inline-block; font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.queue-num.num-pending { color: #ffb020; }  /* cam/vàng: còn chờ chạy */
+.queue-num.num-done { color: var(--success); } /* xanh lá: đã chạy xong */
+.queue-num.bump { animation: queue-num-bump 0.5s ease-out; }
+@keyframes queue-num-bump {
+  0% { transform: scale(1); filter: brightness(1); }
+  35% { transform: scale(1.5); filter: brightness(1.4); text-shadow: 0 0 10px currentColor; }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+
+/* Thêm khung giờ (Tương tác Home) */
+.window-add-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.window-add-row .btn { flex: none; padding: 9px 12px; }
+.window-sep { color: var(--text-dim); font-size: 13px; }
+.window-time { flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; }
+.window-input { flex: 1; min-width: 0; width: 34px; padding: 9px 2px; font-size: 12px; text-align: center; }
+.window-colon { color: var(--text-dim); font-size: 13px; }
+#homeWindowList { margin-bottom: 4px; }
+
+/* Thanh kéo tỉ lệ (Like comment) */
+.range-slider { width: 100%; margin: 2px 0 0; accent-color: var(--primary); cursor: pointer; }
+
+.timer-box {
+  min-width: 78px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-alt);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 15px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.progress-header { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 8px; text-align: left; }
+.progress-header .hint-text { margin: 0; }
+.progress-title { font-size: 16px !important; font-weight: 800; color: var(--text) !important; }
+
+/* Toggle switch (kiểu công tắc bật/tắt) */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.toggle-row .section-label { margin-bottom: 0; }
+.toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--border);
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+.toggle-slider::before {
+  position: absolute;
+  content: "";
+  height: 18px; width: 18px;
+  left: 3px; bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--primary); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+/* Accordion (Tiện Ích) */
+.accordion-item {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.accordion-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.accordion-icon {
+  font-size: 20px;
+  color: var(--primary);
+  padding: 8px;
+  width: 36px; height: 36px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--panel-alt);
+  border-radius: 10px;
+}
+.accordion-title-block { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.accordion-title { font-weight: 700; font-size: 14.5px; }
+.accordion-desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.accordion-chevron { font-size: 20px; color: var(--text-dim); transition: transform 0.2s ease; flex-shrink: 0; }
+.accordion-item.open .accordion-chevron { transform: rotate(90deg); color: var(--primary); }
+.accordion-body { display: none; padding: 0 14px 14px; }
+.accordion-item.open .accordion-body { display: block; }
+.accordion-item.open .accordion-header { border-bottom: 1px solid var(--border); }
+.progress-percent {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--panel-alt);
+  padding: 3px 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.progress-bar-track {
+  height: 8px;
+  background: var(--panel-alt);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.status-indicator { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  display: inline-block;
+}
+
+.status-msg { font-size: 11.5px; color: var(--success); margin-left: 8px; }
+
+/* Media library */
+.branding-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.brand-box { text-align: center; }
+.paste-zone {
+  padding: 16px 8px;
+  border: 1.5px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  cursor: text;
+  margin: 8px 0;
+  line-height: 1.6;
+}
+.paste-zone:focus { border-color: var(--primary); outline: none; background: var(--panel-alt); }
+.paste-zone-browse {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--primary);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 11px;
+}
+input[type="file"] { display: none; }
+
+.media-gallery { display: flex; flex-wrap: wrap; gap: 6px; }
+.gallery-item { width: 56px; height: 56px; position: relative; }
+.thumb {
+  width: 100%; height: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+}
+.thumb.selected { border-color: var(--primary); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Logo & Nhân vật cho phép CHỌN NHIỀU ẢNH (nhân vật phụ...) - badge số thứ tự cho biết
+   ảnh nào đang được chọn và gửi cho AI theo đúng thứ tự nào. */
+.thumb-order {
+  position: absolute;
+  bottom: -4px;
+  left: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  border: 2px solid var(--panel);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.brand-hint { font-size: 11px; opacity: 0.7; margin: 0 0 6px; }
+.thumb-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  border: 2px solid var(--panel);
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.gallery-item:hover .thumb-remove { opacity: 1; transform: scale(1); }
+
+/* Nút cuộn nhanh lên đầu trang - cố định ở góc dưới bên phải, ngay trên thanh tab (TIỆN ÍCH).
+   Là position:fixed nên luôn nằm yên trên màn hình khi cuộn; chỉ hiện khi đã cuộn xuống đủ xa. */
+.scroll-top-btn {
+  position: fixed;
+  right: 14px;
+  bottom: 84px; /* JS đặt lại theo chiều cao thật của thanh tab */
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  z-index: 400;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.scroll-top-btn.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.scroll-top-btn:hover { filter: brightness(1.1); }
+.scroll-top-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Autosave toast - to, nổi bật, dễ nhận biết */
+.autosave-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 76px;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--success);
+  border: none;
+  color: #06231a;
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+  z-index: 999;
+  max-width: 92%;
+  text-align: center;
+}
+.autosave-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Nhật ký hoạt động */
+.log-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.log-header h3 { margin: 0; }
+.btn-clear-log {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-clear-log:hover { border-color: var(--danger); color: var(--danger); }
+.log-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.log-empty { font-size: 11.5px; color: var(--text-dim); text-align: center; padding: 16px 0; }
+.log-entry {
+  font-size: 11.5px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  background: var(--panel-alt);
+  border-left: 3px solid var(--text-dim);
+  line-height: 1.45;
+  word-break: break-word;
+}
+.log-entry.success { border-left-color: var(--success); }
+.log-entry.error { border-left-color: var(--fail); }
+.log-entry.info { border-left-color: #5b8def; }
+.log-time { color: var(--text-dim); font-size: 10px; margin-right: 6px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+/* Modal Blacklist - danh sách có thể rất dài nên tách sang popup riêng, cuộn được,
+   thay vì nhồi hết vào 1 khung tag-input-box cố định trong card gây phình trang. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 14px;
+  z-index: 1000;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  width: 100%;
+  max-width: 340px;
+  max-height: 80vh;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-header h3 { margin: 0; font-size: 13.5px; }
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.modal-close:hover { color: var(--danger); }
+.modal-add-row { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.modal-search-row { padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--panel-alt); }
+.modal-search-row input { background: var(--panel); }
+.modal-body {
+  padding: 12px 14px;
+  overflow-y: auto;
+  flex: 1;
+}
+.modal-body .tag-list { gap: 8px; }
+.modal-empty-hint { font-size: 12px; color: var(--text-dim); text-align: center; padding: 12px 0; }
+
+/* Danh sách nhóm Telegram đã thêm (mục "Nguồn Telegram") - mỗi dòng gồm tên nhóm (do
+   người dùng đặt để dễ nhận biết) + link rút gọn + nút xoá. */
+.group-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  background: var(--panel-alt);
+}
+.group-list-row .group-info { min-width: 0; flex: 1; }
+.group-list-row .group-name { font-weight: 600; font-size: 13px; }
+.group-list-row .group-link { font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.group-list-row .group-rm { background: transparent; border: none; color: var(--danger); font-size: 18px; line-height: 1; cursor: pointer; flex-shrink: 0; padding: 4px; }
+.group-list-row .group-rm:hover { opacity: 0.75; }
+
+/* Mỗi nhóm Telegram có thể mở NHIỀU khung giờ gửi trong ngày - hiện dưới dạng các "chip"
+   giờ nhỏ ngay dưới tên nhóm, và trong modal thêm/sửa nhóm thì mỗi chip có thêm nút xoá. */
+#telegramGroupList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+#telegramGroupList .group-list-row { margin-bottom: 0; }
+.group-list-row { align-items: center; padding: 6px 8px; gap: 4px; }
+.group-list-row .group-actions { gap: 0; }
+.group-list-row .group-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.group-list-row .group-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.group-list-row .group-edit { background: transparent; border: none; color: var(--text-dim); font-size: 14px; line-height: 1; cursor: pointer; padding: 4px; }
+.group-list-row .group-edit:hover { color: var(--accent); }
+.slot-chip-wrap { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.slot-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+  padding: 3px 8px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+}
+.slot-chip.empty { font-weight: 400; color: var(--text-dim); border-style: dashed; }
+.slot-chip .slot-rm { background: transparent; border: none; color: var(--danger); font-size: 14px; line-height: 1; cursor: pointer; padding: 0 0 0 2px; }
+.slot-chip .slot-rm:hover { opacity: 0.7; }
+
+/* Danh sách khung giờ để TÍCH CHỌN khi thêm lịch gửi (mỗi dòng 1 khung giờ của nhóm đang chọn). */
+.slot-pick-list { display: flex; flex-direction: column; gap: 4px; }
+.slot-pick-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel-alt); cursor: pointer; font-size: 13px;
+}
+.slot-pick-row:hover { border-color: var(--accent); }
+.slot-pick-row input.tg-slot-check { width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; margin: 0; }
+.slot-pick-row .slot-time { font-weight: 600; font-variant-numeric: tabular-nums; }
+.slot-pick-row .slot-when { font-size: 11px; color: var(--text-dim); margin-left: auto; }
+.slot-add-row { display: flex; gap: 6px; align-items: center; }
+.slot-add-row .window-time { flex: 1; gap: 6px; }
+.slot-add-row .window-input { padding: 9px 4px; font-size: 14px; }
+.slot-add-row .btn { flex-shrink: 0; width: auto; padding: 8px 14px; }
+
+  </style>
+</head>
+<body>
+  <main class="main-content">
+    <button id="themeToggleBtn" type="button" class="theme-toggle-btn main-theme-toggle" title="Chuyển giao diện sáng/tối">
+      <span id="themeToggleIcon">🌙</span>
+    </button>
+    <!-- TAB 1: HOME -->
+    <section id="tab-create" class="tab-content active">
+      <header class="content-header">
+        <h1>HOME</h1>
+      </header>
+
+      <nav class="sub-tab-bar">
+        <button class="sub-tab-btn hidden" data-subtab="subtab-create" aria-hidden="true" tabindex="-1">Tạo Content</button>
+        <button class="sub-tab-btn active" data-subtab="subtab-crypto">Content Crypto</button>
+        <button class="sub-tab-btn" data-subtab="subtab-chatgpt">Quét ChatGPT</button>
+        <button class="sub-tab-btn" data-subtab="subtab-missions">Nhiệm vụ</button>
+      </nav>
+
+      <!-- SUB-TAB: TẠO CONTENT AI -->
+      <div id="subtab-create" class="subtab-content">
+        <div class="card run-control-card">
+          <div class="action-buttons run-buttons">
+            <button id="btnGenerateContent" class="btn btn-run">CHẠY</button>
+            <button id="btnStopGenerate" class="btn btn-run btn-run-stop hidden">DỪNG</button>
+          </div>
+          <div class="status-indicator" id="generateStatusRow">
+            <span class="status-dot"></span>
+            <span id="generateStatusText">Nhàn Rỗi</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="form-group">
+            <label class="section-label">Nguồn Tạo Bài</label>
+            <div class="chip-group" id="contentSourceChips">
+              <button class="chip option-chip" data-group="contentSource" data-val="manual">✍️ Bằng Text</button>
+              <button class="chip option-chip active" data-group="contentSource" data-val="project">📡 Quét từ Dự án</button>
+            </div>
+          </div>
+
+          <div class="form-group" id="projectScanGroup">
+            <div class="two-col">
+              <div class="col">
+                <label for="scanProjectInput">Username dự án</label>
+                <div class="tag-input-box" id="projectTagBox">
+                  <div class="tag-list" id="projectTagList"></div>
+                  <input type="text" id="scanProjectInput" placeholder="solana + Enter">
+                </div>
+              </div>
+              <div class="col">
+                <label for="scanKolInput">Username KOL</label>
+                <div class="tag-input-box" id="kolTagBox">
+                  <div class="tag-list" id="kolTagList"></div>
+                  <input type="text" id="scanKolInput" placeholder="cz_binance + Enter">
+                </div>
+              </div>
+            </div>
+            <div class="tag-select-hint">Bấm vào tên để chọn/bỏ chọn username dùng để quét. Username dự án: chỉ chọn được 1 (chọn tên khác sẽ tự bỏ tên đang chọn). Username KOL: chọn được NHIỀU - hệ thống thử lần lượt từ trái sang phải, KOL nào không có bài tag dự án thì tự chuyển sang KOL kế tiếp cho tới khi tạo được bài</div>
+          </div>
+
+          <div class="form-group hidden" id="manualTopicGroup">
+            <label for="topicInput">Nhập Nội Dung Gốc</label>
+            <textarea id="topicInput" placeholder="Ví dụ: Phân tích xu hướng Bitcoin sau Halving... (để trống được nếu đã đính kèm ảnh bên dưới)"></textarea>
+
+            <label class="sub-label" style="margin-top:10px;">Ảnh để AI phân tích (không bắt buộc)</label>
+            <div class="hint-text" style="margin-bottom:6px;">AI sẽ xem nội dung trong ảnh để quyết định nên viết gì và cần tag ai (nếu nhận ra dự án/logo quen thuộc).</div>
+            <div class="paste-zone" id="manualImagePasteZone" tabindex="0">📋 Bấm vào đây rồi Ctrl+V để dán ảnh<br><span class="paste-zone-browse" data-browse-for="manualImageFileInput">hoặc chọn tệp</span></div>
+            <input type="file" id="manualImageFileInput" accept="image/*" class="hidden" />
+            <div id="manualImagePreviewBox" class="hidden" style="margin-top:8px; position:relative;">
+              <img id="manualImagePreviewImg" style="max-width:100%; border-radius:8px; border:1px solid var(--border); display:block;" />
+              <button id="btnRemoveManualImage" type="button" class="thumb-remove" style="position:absolute; top:6px; right:6px; opacity:1; transform:scale(1);">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <button class="accordion-header" data-accordion-toggle="acc-setting-create">
+            <span class="accordion-icon"><svg viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg></span>
+            <span class="accordion-title-block">
+              <span class="accordion-title">Setting Tạo Content</span>
+              <span class="accordion-desc">Prompt gốc, độ dài, định dạng, ngôn ngữ, ảnh, tag và thời gian đăng bài.</span>
+            </span>
+            <span class="accordion-chevron">›</span>
+          </button>
+          <div class="accordion-body" id="acc-setting-create">
+        <div class="card">
+          <div class="form-group">
+            <label class="section-label">Prompt Gốc</label>
+            <div class="chip-group">
+              <button class="chip option-chip active" data-group="tone" data-val="informative">Phân tích</button>
+              <button class="chip option-chip" data-group="tone" data-val="bullish">Bullish/hype</button>
+              <button class="chip option-chip" data-group="tone" data-val="degen">Degen/meme</button>
+              <button class="chip option-chip" data-group="tone" data-val="neutral">Trung lập</button>
+              <button class="chip option-chip" data-group="tone" data-val="kol_insight">KOL Insight</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="section-label">Độ Dài Bài Đăng</label>
+            <div class="two-col">
+              <div class="col">
+                <label for="charLimitMin" class="sub-label">Tối thiểu</label>
+                <input type="text" id="charLimitMin" placeholder="200">
+              </div>
+              <div class="col">
+                <label for="charLimitMax" class="sub-label">Tối đa</label>
+                <input type="text" id="charLimitMax" placeholder="280">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="form-group select-collapse" data-select-group="postType">
+            <label class="section-label">Dạng Bài Viết</label>
+            <button type="button" class="select-trigger">
+              <span class="select-trigger-text">1 Tweet</span>
+              <span class="select-trigger-chevron">▾</span>
+            </button>
+            <div class="chip-group select-options">
+              <button class="chip option-chip active" data-group="postType" data-val="1tweet">1 Tweet</button>
+              <button class="chip option-chip" data-group="postType" data-val="thread">Thread 4-5 tweet</button>
+            </div>
+          </div>
+
+          <div class="form-group select-collapse" data-select-group="contentLang">
+            <label class="section-label">Ngôn ngữ bài đăng</label>
+            <button type="button" class="select-trigger">
+              <span class="select-trigger-text">Tiếng Việt</span>
+              <span class="select-trigger-chevron">▾</span>
+            </button>
+            <div class="chip-group select-options">
+              <button class="chip option-chip active" data-group="contentLang" data-val="vi">Tiếng Việt</button>
+              <button class="chip option-chip" data-group="contentLang" data-val="en">Tiếng Anh</button>
+              <button class="chip option-chip" data-group="contentLang" data-val="zh">Tiếng Trung</button>
+            </div>
+          </div>
+
+          <div class="form-group select-collapse" data-select-group="needMedia">
+            <label class="section-label">Phong Cách Đăng</label>
+            <button type="button" class="select-trigger">
+              <span class="select-trigger-text">Cần ảnh</span>
+              <span class="select-trigger-chevron">▾</span>
+            </button>
+            <div class="chip-group select-options">
+              <button class="chip option-chip" data-group="needMedia" data-val="text">Chỉ text</button>
+              <button class="chip option-chip active" data-group="needMedia" data-val="image">Cần ảnh</button>
+            </div>
+          </div>
+
+          <div class="form-group select-collapse" id="imageSourceContainer" data-select-group="imageSource">
+            <label class="section-label">Ảnh Trong Bài Đăng</label>
+            <button type="button" class="select-trigger">
+              <span class="select-trigger-text">AI ChatGPT</span>
+              <span class="select-trigger-chevron">▾</span>
+            </button>
+            <div class="chip-group select-options">
+              <button class="chip option-chip active" data-group="imageSource" data-val="chatgpt">AI ChatGPT</button>
+              <button class="chip option-chip" data-group="imageSource" data-val="gemini">AI Gemini</button>
+              <button class="chip option-chip" data-group="imageSource" data-val="library">Thư viện có sẵn</button>
+            </div>
+          </div>
+
+          <div class="form-group" id="imageExtraPromptGroup">
+            <label class="section-label">Prompt Thêm Cho Ảnh (tuỳ chọn)</label>
+            <textarea id="imageExtraPrompt" placeholder="Ví dụ: cho nhân vật mặc đồ khác, đổi bối cảnh sang ban đêm... Để trống = gửi như cũ (chỉ ảnh mẫu nhân vật)."></textarea>
+          </div>
+
+          <div class="form-group select-collapse" id="tagTargetGroup" data-select-group="tagTarget">
+            <label class="section-label">Gắn Tag</label>
+            <button type="button" class="select-trigger">
+              <span class="select-trigger-text">Tag dự án</span>
+              <span class="select-trigger-chevron">▾</span>
+            </button>
+            <div class="chip-group select-options">
+              <button class="chip option-chip active" data-group="tagTarget" data-val="project">Tag dự án</button>
+              <button class="chip option-chip" data-group="tagTarget" data-val="kols">Tag KOLs</button>
+              <button class="chip option-chip" data-group="tagTarget" data-val="both">Cả 2</button>
+            </div>
+          </div>
+
+          <div class="form-group select-collapse" data-select-group="postMode">
+            <label class="section-label">Thời Gian Đăng Bài</label>
+            <button type="button" class="select-trigger">
+              <span class="select-trigger-text">🚀 Đăng ngay</span>
+              <span class="select-trigger-chevron">▾</span>
+            </button>
+            <div class="chip-group select-options">
+              <button class="chip option-chip active" data-group="postMode" data-val="now">🚀 Đăng ngay</button>
+              <button class="chip option-chip" data-group="postMode" data-val="schedule">📅 Hẹn giờ đăng</button>
+            </div>
+          </div>
+          <div class="form-group hidden" id="scheduleTimeGroup">
+            <label class="section-label">Chọn ngày giờ muốn đăng (theo giờ thực tế trên máy tính)</label>
+
+            <label class="sub-label">Ngày</label>
+            <div class="schedule-date-row">
+              <div class="schedule-field">
+                <label for="scheduleMonthSelect">Tháng</label>
+                <select id="scheduleMonthSelect"></select>
+              </div>
+              <div class="schedule-field">
+                <label for="scheduleDaySelect">Ngày</label>
+                <select id="scheduleDaySelect"></select>
+              </div>
+              <div class="schedule-field">
+                <label for="scheduleYearSelect">Năm</label>
+                <select id="scheduleYearSelect"></select>
+              </div>
+            </div>
+
+            <label class="sub-label">Giờ</label>
+            <div class="schedule-time-row">
+              <div class="schedule-field">
+                <label for="scheduleHourSelect">Giờ</label>
+                <input type="number" id="scheduleHourSelect" class="hms-input" min="0" max="23" placeholder="0" inputmode="numeric">
+              </div>
+              <div class="schedule-field">
+                <label for="scheduleMinuteSelect">Phút</label>
+                <input type="number" id="scheduleMinuteSelect" class="hms-input" min="0" max="59" placeholder="0" inputmode="numeric">
+              </div>
+            </div>
+
+            <p class="hint-text" id="currentPcTimeText">🕒 Giờ hiện tại trên máy: ...</p>
+
+            <div class="form-group toggle-row" style="margin-top:10px;">
+              <label class="section-label" for="scheduleRepeatDailyToggle">Lặp lại hàng ngày (tự đăng lại đúng khung giờ này mỗi ngày)</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="scheduleRepeatDailyToggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <p class="hint-text" id="scheduleRepeatDailyHint" style="display:none;">🔁 Mỗi lần lặp lại, AI sẽ tự xem lại vài bài gần nhất đã đăng theo lịch này để viết nội dung MỚI, tránh trùng ý/trùng câu chữ. Bấm "Huỷ" ở danh sách bên dưới bất kỳ lúc nào để dừng hẳn việc lặp lại.</p>
+
+            <div class="run-buttons-row" style="margin-top:14px;">
+              <button id="btnGenerateContentSchedule" type="button" class="btn btn-run full">🕒 BẮT ĐẦU HẸN GIỜ</button>
+            </div>
+          </div>
+        </div>
+
+          </div>
+        </div>
+
+        <div class="card hidden" id="resultCard">
+          <h3 id="resultCardTitle">Nội dung bài viết (Đã tự động bấm đăng bài)</h3>
+          <div id="generatedTextContent" class="content-preview" contenteditable="true"></div>
+
+          <div class="media-preview-container hidden" id="mediaPreviewContainer">
+            <h4>Ảnh minh hoạ:</h4>
+            <img id="generatedImagePreview" src="" alt="AI Generated Image" />
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="log-header">
+            <h3>📅 Bài đăng đã hẹn giờ</h3>
+            <button id="btnClearFinishedSchedules" class="btn-clear-log">Xoá lịch sử đã xong</button>
+          </div>
+          <div id="scheduledPostsList" class="log-list">
+            <div class="log-empty">Chưa có bài nào được hẹn giờ.</div>
+          </div>
+        </div>
+
+        <div class="card log-card">
+          <div class="log-header">
+            <h3>📋 Nhật ký Tạo Content</h3>
+            <button id="btnClearLogCreate" type="button" class="btn-clear-log">Xoá</button>
+          </div>
+          <div id="logListCreate" class="log-list">
+            <div class="log-empty">Chưa có hoạt động nào.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SUB-TAB: CONTENT CRYPTO -->
+      <div id="subtab-crypto" class="subtab-content active">
+          <div class="card">
+            <h3>1. Nguồn tin</h3>
+            <div class="form-group">
+              <label for="cryptoWebsiteUrls">URL website cần quét (mỗi dòng 1 URL HTTPS)</label>
+              <textarea id="cryptoWebsiteUrls" placeholder="https://example.com/blog"></textarea>
+              <p class="hint-text">Quét tối đa 5 bài mỗi URL, đọc nội dung và lấy ảnh. Bấm Quét ngay bên dưới; chế độ duyệt nháp vẫn áp dụng.</p>
+            </div>
+            <div class="form-group">
+              <label for="cryptoRestMinutes">Lướt Home khi nghỉ sau khi đăng (phút, 0 để tắt)</label>
+              <input type="number" id="cryptoRestMinutes" min="0" max="60" step="0.5" value="1" />
+            </div>
+            <div class="form-group">
+              <label for="cryptoSources">Nguồn tin cần quét (mỗi dòng 1 nguồn: tài khoản X như @whale_alert, hoặc link RSS/Atom của trang tin)</label>
+              <textarea id="cryptoSources" style="min-height:110px;" placeholder="@whale_alert&#10;WatcherGuru&#10;https://www.coindesk.com/arc/outboundfeeds/rss/&#10;https://cointelegraph.com/rss"></textarea>
+              <p class="hint-text">Mỗi tài khoản X lấy 3 bài mới nhất (bỏ bài ghim). Lần đầu dùng link RSS mới, Chrome sẽ hỏi quyền truy cập trang đó - bấm "Cho phép" để extension tải được tin.</p>
+            </div>
+            <div class="form-group">
+              <label for="cryptoFocus">Chủ đề ưu tiên (tuỳ chọn, để AI chọn tin hợp gu)</label>
+              <input type="text" id="cryptoFocus" placeholder="Ví dụ: Bitcoin, ETF, DeFi, hack/exploit, tin sàn lớn">
+            </div>
+            <div class="form-group">
+              <label for="cryptoKwExclude">Bỏ tin có chứa từ khoá (cách nhau bằng dấu phẩy)</label>
+              <input type="text" id="cryptoKwExclude" placeholder="giveaway, airdrop, whitelist">
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>2. Giọng văn của bạn</h3>
+            <div class="form-group">
+              <label for="cryptoPersona">Vai trò / tính cách người viết</label>
+              <textarea id="cryptoPersona" placeholder="Ví dụ: Bạn là Linz, trader nhỏ lẻ ở Việt Nam, nói chuyện thẳng, hơi hoài nghi, hay nhắc rủi ro..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="cryptoSample">Bài đăng mẫu (mỗi lần dán 1 bài nguyên vẹn kể cả xuống dòng, bấm Thêm để lưu; ô này sẽ tự làm trống)</label>
+              <textarea id="cryptoSample" style="min-height:100px;" placeholder="Dán 1 bài mẫu vào đây (có thể nhiều dòng), rồi bấm Thêm..."></textarea>
+              <button type="button" id="btnCryptoSampleAdd" class="btn btn-run" style="margin-top:6px;padding:4px 12px;font-size:12px;">+ Thêm bài mẫu</button>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                <p class="hint-text" id="cryptoSampleStatus" style="margin:0;flex:1;">Chưa có bài mẫu nào được lưu.</p>
+                <button type="button" id="btnCryptoSampleToggle" class="btn" style="padding:2px 12px;font-size:12px;">Xem</button>
+              </div>
+              <div id="cryptoSamplePanel" class="hidden">
+                <div id="cryptoSampleList"></div>
+                <button type="button" id="btnCryptoSampleClear" class="btn btn-run-stop" style="margin-top:6px;padding:4px 10px;font-size:12px;">Xoá hết bài mẫu đã lưu</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="cryptoLanguage">Ngôn ngữ bài đăng</label>
+              <input type="text" id="cryptoLanguage" placeholder="Tiếng Việt">
+            </div>
+            <div class="form-group">
+              <label for="cryptoExtraRules">Quy tắc thêm (tuỳ chọn, mỗi dòng 1 quy tắc)</label>
+              <textarea id="cryptoExtraRules" placeholder="Luôn xưng &quot;mình&quot;&#10;Không dùng hashtag"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="cryptoMaxChars">Độ dài tối đa mỗi bài (ký tự; tài khoản thường là 280, Premium có thể cao hơn)</label>
+              <input type="text" id="cryptoMaxChars" placeholder="270">
+            </div>
+            <div class="form-group toggle-row">
+              <label class="section-label" for="cryptoSourceLinkToggle">Gắn link nguồn cuối bài</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="cryptoSourceLinkToggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="form-group toggle-row">
+              <label class="section-label" for="cryptoCopyImageToggle">Copy ảnh từ bài gốc (nếu có)</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="cryptoCopyImageToggle" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>3. Lịch &amp; giới hạn</h3>
+            <div class="form-group toggle-row">
+              <label class="section-label" for="cryptoAutoToggle">Tự động quét &amp; đăng định kỳ</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="cryptoAutoToggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label for="cryptoPollInput">Cách bao lâu quét 1 lần (phút, tối thiểu 10)</label>
+              <input type="text" id="cryptoPollInput" placeholder="60">
+            </div>
+            <div class="form-group">
+              <label for="cryptoMaxPerDay">Tối đa bao nhiêu bài mỗi ngày (mỗi lượt quét đăng 1 bài, các lượt cách nhau theo chu kỳ quét)</label>
+              <input type="text" id="cryptoMaxPerDay" placeholder="8">
+            </div>
+            <div class="form-group toggle-row">
+              <label class="section-label" for="cryptoDraftToggle">Duyệt bản nháp trước khi đăng (tắt = tự đăng luôn)</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="cryptoDraftToggle" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <p class="hint-text" id="cryptoNextRunText"></p>
+            <div class="btn-row">
+              <button id="btnCryptoRun" type="button" class="btn btn-run">Quét ngay</button>
+              <button id="btnCryptoStop" type="button" class="btn btn-run btn-run-stop">Dừng</button>
+            </div>
+            <p class="hint-text" id="cryptoStatusText">Nhàn Rỗi</p>
+          </div>
+
+          <div class="card" id="cryptoDraftsCard" style="display:none;">
+            <h3>Bản nháp chờ duyệt</h3>
+            <p class="hint-text">Sửa tay nếu muốn rồi bấm "Đăng bài này".</p>
+            <div id="cryptoDrafts"></div>
+          </div>
+      </div>
+
+      <!-- SUB-TAB: QUÉT CHATGPT -->
+      <div id="subtab-chatgpt" class="subtab-content">
+          <div class="card">
+            <p class="hint-text">Phỏng đoán theo cấu trúc ChatGPT Tasks - có thể cần chỉnh lại sau khi thử thật lần đầu.</p>
+            <div class="form-group toggle-row">
+              <label class="section-label" for="chatgptAutoToggle">Tự động quét định kỳ</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="chatgptAutoToggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label for="chatgptPollInput">Cách bao lâu quét 1 lần (phút, tối thiểu 5)</label>
+              <input type="text" id="chatgptPollInput" placeholder="Ví dụ: 30">
+            </div>
+            <div class="form-group">
+              <label for="chatgptTaskNameInput">Tên tác vụ (Task) cần lấy (khớp 1 phần, để trống = lấy mọi tác vụ)</label>
+              <input type="text" id="chatgptTaskNameInput" placeholder="Ví dụ: Daily Crypto News">
+            </div>
+            <div class="form-group">
+              <label for="chatgptPostGapInput">Cách nhau giữa các bài (phút, 0 = đăng liền)</label>
+              <input type="text" id="chatgptPostGapInput" placeholder="Ví dụ: 30">
+            </div>
+            <p class="hint-text" id="chatgptNextRunText"></p>
+            <div class="btn-row">
+              <button id="btnChatgptRunNow" type="button" class="btn btn-run">Quét &amp; đăng ngay</button>
+            </div>
+            <p class="hint-text" id="chatgptStatusText">Nhàn Rỗi</p>
+          </div>
+      </div>
+
+      <!-- SUB-TAB: NHIỆM VỤ (TỰ ĐỘNG HOÁ) -->
+      <div id="subtab-missions" class="subtab-content">
+          <div class="card">
+            <div id="missionsList"></div>
+            <div class="btn-row">
+              <button id="btnAddMission" type="button" class="btn">+ Thêm nhiệm vụ</button>
+            </div>
+          </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: CÀI ĐẶT -->
+    <section id="tab-settings" class="tab-content">
+      <header class="content-header">
+        <h1>Cài đặt API & AI</h1>
+      </header>
+
+      <div class="card">
+        <h3>Lướt Home khi tạm nghỉ</h3>
+        <div class="form-group">
+          <label for="restCommentLikePercent">Tỉ lệ comment + like bài đăng (%)</label>
+          <input type="number" id="restCommentLikePercent" min="0" max="100" step="1" value="0" />
+        </div>
+        <div class="form-group">
+          <label for="restLikeOnlyPercent">Tỉ lệ chỉ like, không comment (%)</label>
+          <input type="number" id="restLikeOnlyPercent" min="0" max="100" step="1" value="0" />
+        </div>
+        <p class="hint-text">Tổng tối đa 100%. Phần còn lại chỉ đọc. Mỗi bài chỉ xét một lần trong phiên nghỉ; bỏ qua quảng cáo và bài của chính bạn. Comment dùng prompt Reply AI hiện có và provider đã cấu hình.</p>
+        <p id="restInteractionStatus" class="hint-text" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="card">
+        <div class="form-group">
+          <div class="label-with-link">
+            <label class="section-label" for="aiProviderSelect">Provider</label>
+            <a id="providerApiKeyLink" class="field-link" href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Lấy OpenAI API key tại OpenAI Dashboard</a>
+          </div>
+          <select id="aiProviderSelect">
+            <option value="openai">OpenAI</option>
+            <option value="gemini">Gemini</option>
+            <option value="deepseek">DeepSeek</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="openaiSettingsGroup">
+          <label for="openaiKeyInput">OpenAI API Key</label>
+          <input type="password" id="openaiKeyInput" placeholder="sk-proj-...">
+          <label for="aiModelSelect" class="sub-label">OpenAI model</label>
+          <select id="aiModelSelect">
+            <option value="gpt-5.6-terra">GPT-5.6 Terra (Khuyên dùng - cân bằng)</option>
+            <option value="gpt-5.6-luna">GPT-5.6 Luna (Rẻ nhất)</option>
+            <option value="gpt-5.6-sol">GPT-5.6 Sol (Mạnh nhất, đắt nhất)</option>
+            <option value="gpt-4o">GPT-4o</option>
+            <option value="gpt-4o-mini">GPT-4o-mini</option>
+            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+          </select>
+        </div>
+
+        <div class="form-group hidden" id="geminiSettingsGroup">
+          <label for="geminiKeyInput">Gemini API Key</label>
+          <input type="password" id="geminiKeyInput" placeholder="AIza...">
+          <label for="geminiModelSelect" class="sub-label">Gemini model</label>
+          <select id="geminiModelSelect">
+            <option value="gemini-3.8-flash">Gemini 3.8 Flash (mới nhất)</option>
+            <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
+            <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+            <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (rẻ nhất)</option>
+            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (suy luận tốt nhất)</option>
+          </select>
+        </div>
+
+        <div class="form-group hidden" id="deepseekSettingsGroup">
+          <label for="deepseekKeyInput">DeepSeek API Key</label>
+          <input type="password" id="deepseekKeyInput" placeholder="sk-...">
+          <label for="deepseekModelSelect" class="sub-label">DeepSeek model</label>
+          <select id="deepseekModelSelect">
+            <option value="deepseek-chat">DeepSeek Chat</option>
+            <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+          </select>
+        </div>
+
+
+        <div class="form-group">
+          <label class="section-label">Tốc độ gõ chữ (ms/ký tự - áp dụng khi đăng bài và reply)</label>
+          <div class="kol-input-row">
+            <input type="text" id="typingSpeedMinInput" placeholder="Nhanh nhất (vd: 30)">
+            <input type="text" id="typingSpeedMaxInput" placeholder="Chậm nhất (vd: 80)">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Nhân vật dự án</h3>
+        <div class="branding-grid">
+          <div class="brand-box">
+            <h4>Nhân Vật / Mascot</h4>
+            <p class="brand-hint">Bấm vào ảnh để chọn / bỏ chọn - chọn nhiều ảnh nếu dự án có nhân vật phụ.</p>
+            <div class="paste-zone" id="charPasteZone" tabindex="0">📋 Bấm vào đây rồi Ctrl+V để dán ảnh<br><span class="paste-zone-browse" data-browse-for="charFileInput">hoặc chọn tệp</span></div>
+            <input type="file" id="charFileInput" accept="image/*" multiple>
+            <div id="charGallery" class="media-gallery"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Thư viện ảnh có sẵn</h3>
+        <div class="paste-zone" id="libraryPasteZone" tabindex="0">📋 Bấm vào đây rồi Ctrl+V để dán ảnh<br><span class="paste-zone-browse" data-browse-for="libraryFileInput">hoặc chọn tệp</span></div>
+        <input type="file" id="libraryFileInput" accept="image/*" multiple>
+        <div id="mediaGallery" class="media-gallery"></div>
+      </div>
+
+      <div class="card log-card">
+        <div class="log-header">
+          <h3>📋 Nhật ký Cài đặt</h3>
+          <button id="btnClearLogSettings" type="button" class="btn-clear-log">Xoá</button>
+        </div>
+        <div id="logListSettings" class="log-list">
+          <div class="log-empty">Chưa có hoạt động nào.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: TIỆN ÍCH -->
+    <section id="tab-utilities" class="tab-content hidden" hidden inert aria-hidden="true">
+      <header class="content-header">
+        <h1>Tiện Ích</h1>
+        <p class="hint-text">Chọn một tiện ích để mở công cụ tương ứng.</p>
+      </header>
+
+      <div class="accordion-item">
+        <button class="accordion-header" data-accordion-toggle="acc-setting-replyai">
+          <span class="accordion-icon"><svg viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg></span>
+          <span class="accordion-title-block">
+            <span class="accordion-title">Cài đặt Reply AI</span>
+            <span class="accordion-desc">Cấu hình cho nút "Reply AI" xuất hiện trên mọi bài đăng ở X.com.</span>
+          </span>
+          <span class="accordion-chevron">›</span>
+        </button>
+        <div class="accordion-body" id="acc-setting-replyai">
+      <div class="card">
+        <div class="form-group toggle-row">
+          <label class="section-label" for="crossLinkLikeToggle">Thích (Like) bài viết sau khi reply</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="crossLinkLikeToggle">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="section-label">Ngôn ngữ Reply</label>
+          <div class="chip-group">
+            <button class="chip option-chip active" data-group="crossLinkLang" data-val="auto">Theo Ngôn Ngữ bài đăng</button>
+            <button class="chip option-chip" data-group="crossLinkLang" data-val="vi">Tiếng Việt</button>
+            <button class="chip option-chip" data-group="crossLinkLang" data-val="en">Tiếng Anh</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="section-label">Số Từ Reply</label>
+          <div class="kol-input-row">
+            <input type="text" id="crossLinkWordMin" placeholder="Tối thiểu (vd: 8)">
+            <input type="text" id="crossLinkWordMax" placeholder="Tối đa (vd: 20)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="section-label">Prompt Gốc</label>
+          <div class="chip-group">
+            <button class="chip option-chip active" data-group="crossLinkTone" data-val="informative">Phân tích</button>
+            <button class="chip option-chip" data-group="crossLinkTone" data-val="bullish">Bullish/hype</button>
+            <button class="chip option-chip" data-group="crossLinkTone" data-val="degen">Degen/meme</button>
+            <button class="chip option-chip" data-group="crossLinkTone" data-val="neutral">Trung lập</button>
+            <button class="chip option-chip" data-group="crossLinkTone" data-val="kol_insight">KOL Insight</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="section-label">Prompt Riêng</label>
+          <textarea id="crossLinkCustomStyle" placeholder="Ví dụ: xưng hô gen Z, hay chêm 1 câu đùa..."></textarea>
+        </div>
+      </div>
+
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <button class="accordion-header" data-accordion-toggle="acc-homeinteract">
+          <span class="accordion-icon"><svg viewBox="0 0 24 24"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg></span>
+          <span class="accordion-title-block">
+            <span class="accordion-title">Tương tác Home</span>
+            <span class="accordion-desc">AI tự reply các bài trên timeline Home của X, không cần dán link.</span>
+          </span>
+          <span class="accordion-chevron">›</span>
+        </button>
+        <div class="accordion-body" id="acc-homeinteract">
+        <div class="card run-control-card">
+          <div class="action-buttons run-buttons">
+            <button id="btnRunHomeInteract" class="btn btn-run">CHẠY</button>
+            <button id="btnStopHomeInteract" class="btn btn-run btn-run-stop hidden">DỪNG</button>
+            <div class="timer-box"><span id="homeInteractTimer">00:00</span></div>
+          </div>
+
+          <p class="hint-text" id="homeInteractProgressText">Tiến độ: 0/0 bài</p>
+          <div class="progress-stats">
+            <div class="stat-box stat-success">
+              <div class="stat-label">THÀNH CÔNG</div>
+              <div class="stat-value" id="homeInteractSuccessCount">0</div>
+            </div>
+            <div class="stat-box stat-fail">
+              <div class="stat-label">THẤT BẠI</div>
+              <div class="stat-value" id="homeInteractFailCount">0</div>
+            </div>
+            <div class="stat-box stat-skip">
+              <div class="stat-label">CÒN LẠI</div>
+              <div class="stat-value" id="homeInteractRemainCount">0</div>
+            </div>
+          </div>
+
+          <div class="status-indicator" id="homeInteractStatusRow">
+            <span class="status-dot"></span>
+            <span id="homeInteractStatusText">Nhàn Rỗi</span>
+          </div>
+          <p class="hint-text" id="homeInteractLastError"></p>
+        </div>
+
+        <div class="card">
+          <div class="form-group">
+            <label class="section-label">Dòng thời gian</label>
+            <div class="chip-group">
+              <button class="chip option-chip active" data-group="homeInteractSource" data-val="for_you">Dành cho bạn</button>
+              <button class="chip option-chip" data-group="homeInteractSource" data-val="following">Đang theo dõi</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="homeInteractMaxInput">Số bài tối đa (mỗi lần chạy / mỗi khung giờ)</label>
+            <input type="text" id="homeInteractMaxInput" placeholder="Ví dụ: 10 (mặc định 10)">
+          </div>
+
+          <div class="form-group">
+            <label class="section-label">Chạy theo khung giờ (giờ của máy tính)</label>
+            <!-- Dùng 4 ô NHẬP SỐ dạng 24H thay cho input[type=time]: ô time của Chrome hiển
+                 thị theo ngôn ngữ máy (SA/CH) và phần SA/CH hay bị cắt mất trong panel hẹp
+                 nên trước đây gần như chỉ đặt được các mốc buổi sáng. Gõ trực tiếp 2 chữ số
+                 nhanh hơn kéo select; homeWindowHourMinInput tự validate + tự nhảy ô. -->
+            <div class="window-add-row">
+              <span class="window-time">
+                <input type="text" id="homeWindowFromHour" class="window-input" title="Giờ bắt đầu (0-23)" inputmode="numeric" maxlength="2" placeholder="00">
+                <span class="window-colon">:</span>
+                <input type="text" id="homeWindowFromMin" class="window-input" title="Phút bắt đầu (0-59)" inputmode="numeric" maxlength="2" placeholder="00">
+              </span>
+              <span class="window-sep">→</span>
+              <span class="window-time">
+                <input type="text" id="homeWindowToHour" class="window-input" title="Giờ kết thúc (0-23)" inputmode="numeric" maxlength="2" placeholder="00">
+                <span class="window-colon">:</span>
+                <input type="text" id="homeWindowToMin" class="window-input" title="Phút kết thúc (0-59)" inputmode="numeric" maxlength="2" placeholder="00">
+              </span>
+              <button type="button" id="btnAddHomeWindow" class="btn btn-primary">+ THÊM</button>
+            </div>
+            <div class="tag-list" id="homeWindowList"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="homeSkipLangInput">Bỏ qua bài đăng có ngôn ngữ</label>
+            <input type="text" id="homeSkipLangInput" placeholder="Ví dụ: tiếng Nhật, tiếng Hàn">
+            <p class="hint-text" id="homeSkipLangHint"></p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="form-group">
+            <label for="homeInteractDelayInput">Delay giữa các lần reply (giây)</label>
+            <input type="text" id="homeInteractDelayInput" placeholder="Ví dụ: 10 (mặc định 5s)">
+          </div>
+
+          <div class="form-group">
+            <div class="kol-input-row">
+              <div class="schedule-field">
+                <label for="homeInteractPauseAfterInput">Nghỉ sau mỗi (số bài)</label>
+                <input type="text" id="homeInteractPauseAfterInput" placeholder="Vd: 20">
+              </div>
+              <div class="schedule-field">
+                <label for="homeInteractPauseDurationInput">Thời gian nghỉ (phút)</label>
+                <input type="text" id="homeInteractPauseDurationInput" placeholder="Vd: 5 (phút)">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group toggle-row">
+            <label class="section-label" for="homeInteractLikeToggle">Thích (Like) bài viết sau khi reply</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="homeInteractLikeToggle">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="section-label">Số từ mỗi reply</label>
+            <div class="kol-input-row">
+              <input type="text" id="homeInteractWordMin" placeholder="Tối thiểu (vd: 8)">
+              <input type="text" id="homeInteractWordMax" placeholder="Tối đa (vd: 20)">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="section-label">Ngôn ngữ reply</label>
+            <div class="chip-group">
+              <button class="chip option-chip active" data-group="homeInteractLang" data-val="auto">Theo Ngôn Ngữ bài đăng</button>
+              <button class="chip option-chip" data-group="homeInteractLang" data-val="vi">Tiếng Việt</button>
+              <button class="chip option-chip" data-group="homeInteractLang" data-val="en">Tiếng Anh</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="section-label">Phong cách gốc của tool</label>
+            <div class="chip-group">
+              <button class="chip option-chip active" data-group="homeInteractTone" data-val="informative">Phân tích</button>
+              <button class="chip option-chip" data-group="homeInteractTone" data-val="bullish">Bullish/hype</button>
+              <button class="chip option-chip" data-group="homeInteractTone" data-val="degen">Degen/meme</button>
+              <button class="chip option-chip" data-group="homeInteractTone" data-val="neutral">Trung lập</button>
+              <button class="chip option-chip" data-group="homeInteractTone" data-val="kol_insight">KOL Insight</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="section-label">Phong cách riêng của bạn (tuỳ chọn)</label>
+            <textarea id="homeInteractCustomStyle" placeholder="Ví dụ: xưng hô gen Z..."></textarea>
+          </div>
+        </div>
+
+        <div class="card log-card">
+          <div class="log-header">
+            <h3>📋 Nhật ký Tương tác Home</h3>
+            <button id="btnClearLogHomeInteract" type="button" class="btn-clear-log">Xoá</button>
+          </div>
+          <div id="logListHomeInteract" class="log-list">
+            <div class="log-empty">Chưa có hoạt động nào.</div>
+          </div>
+        </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="tab-create">
+      <span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+      <span class="tab-label">HOME</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-settings">
+      <span class="tab-icon"><svg viewBox="0 0 24 24"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></svg></span>
+      <span class="tab-label">SETTING</span>
+    </button>
+  </nav>
+
+  <div id="autosaveToast" class="autosave-toast">Đã lưu</div>
+
+  <button id="btnScrollTop" type="button" class="scroll-top-btn" title="Cuộn lên đầu trang" aria-label="Cuộn lên đầu trang">
+    <svg viewBox="0 0 24 24"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+  </button>
+
+  <script src="post_text.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
