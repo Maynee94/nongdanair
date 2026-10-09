@@ -138,3 +138,25 @@ test('AI thử lại khi thiếu độ dài; bỏ các cài đặt đã xoá và
   assert.equal(prompts[0].includes('OLD_PERSONA'),false); assert.equal(prompts[0].includes('OLD_RULE'),false);
   assert.equal(result.text.includes('https://'),false);
 });
+test('service worker chuyển Blob ảnh sang data URL mà không dùng FileReader', async () => {
+  const c=vm.createContext({Uint8Array,btoa});
+  const source=fs.readFileSync(path.join(root,'background.js'),'utf8');
+  vm.runInContext(source.slice(source.indexOf('async function blobToDataUrl(')),c);
+  const bytes=Uint8Array.from({length:20000},(_,i)=>i%256);
+  const result=await c.blobToDataUrl({type:'image/png',arrayBuffer:async()=>bytes.buffer});
+  assert.equal(result,`data:image/png;base64,${Buffer.from(bytes).toString('base64')}`);
+});
+test('đăng ảnh web truyền data URL tới content script trong service worker', async () => {
+  let sent;
+  const c=vm.createContext({Uint8Array,btoa,setTimeout:fn=>fn(),
+    cleanPostPunctuation:t=>t,TAB_CTX:{SHARED:'shared'},clearAutomationTab:()=>{},
+    createFocusedTab:async()=>({id:4}),
+    fetch:async()=>({ok:true,blob:async()=>({type:'image/png',arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer})}),
+    chrome:{runtime:{},tabs:{sendMessage:(id,payload,callback)=>{sent=payload;callback({success:true});}}}
+  });
+  const s=fs.readFileSync(path.join(root,'background.js'),'utf8');
+  vm.runInContext(s.slice(s.indexOf('async function blobToDataUrl(')),c);
+  vm.runInContext(s.slice(s.indexOf('async function handlePostToX('),s.indexOf('// ============== HẸN GIỜ ĐĂNG BÀI')),c);
+  const result=await c.handlePostToX({contentText:'Tin crypto',imageUrl:['https://cdn.example.com/image.png']});
+  assert.equal(result.imageError,null); assert.equal(sent.imageUrl[0],'data:image/png;base64,AQID');
+});

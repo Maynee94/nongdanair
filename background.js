@@ -830,12 +830,7 @@ async function redrawImageViaOffscreenCanvas(src) {
 // được Blob, và service worker không có URL.createObjectURL), nên chặng cuối buộc phải đóng
 // gói Blob đã vẽ lại thành chuỗi data:. Điểm ảnh vẫn là ảnh MỚI do OffscreenCanvas xuất ra.
 function redrawnBlobToTransferString(blob) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onloadend = () => resolve(r.result);
-    r.onerror = () => reject(new Error('Đọc ảnh đã vẽ lại bị lỗi'));
-    r.readAsDataURL(blob);
-  });
+  return blobToDataUrl(blob);
 }
 
 async function redrawImageForPosting(src) {
@@ -942,11 +937,7 @@ async function handlePostToX(data) {
       if (!blob.type || !blob.type.startsWith(expectPrefix)) {
         throw new Error(`Dữ liệu trả về không phải ${mediaType === 'video' ? 'video' : 'ảnh'} (${blob.type || 'không rõ loại'}) - có thể link cần đăng nhập mới tải được`);
       }
-      prepared.push(await new Promise((res) => {
-        const reader = new FileReader();
-        reader.onloadend = () => res(reader.result);
-        reader.readAsDataURL(blob);
-      }));
+      prepared.push(await blobToDataUrl(blob));
     } catch (e) {
       imagePrepError = imagePrepError || e.message; // ảnh nào lỗi thì bỏ ảnh đó, các ảnh khác vẫn đăng
     }
@@ -1178,11 +1169,7 @@ async function resolveImageToDataUrl(imageUrl) {
     if (!blob.type || !blob.type.startsWith('image/')) {
       throw new Error(`Dữ liệu trả về không phải ảnh (${blob.type || 'không rõ loại'})`);
     }
-    const dataUrl = await new Promise((res) => {
-      const reader = new FileReader();
-      reader.onloadend = () => res(reader.result);
-      reader.readAsDataURL(blob);
-    });
+    const dataUrl = await blobToDataUrl(blob);
     return { dataUrl, error: null };
   } catch (e) {
     return { dataUrl: null, error: e.message };
@@ -3408,11 +3395,7 @@ async function missionEnsureDataImage(src) {
     if (!resp.ok) throw new Error(`HTTP ${resp.status} khi tải ảnh gốc để tạo video`);
     const blob = await resp.blob();
     if (!blob.type || !blob.type.startsWith('image/')) throw new Error('Link ảnh gốc không trả về ảnh hợp lệ');
-    return await new Promise((res) => {
-      const r = new FileReader();
-      r.onloadend = () => res(r.result);
-      r.readAsDataURL(blob);
-    });
+    return await blobToDataUrl(blob);
   }
   throw new Error('Ảnh gốc vừa tạo không ở dạng dữ liệu hợp lệ nên không thể đưa sang Grok Imagine.');
 }
@@ -3728,52 +3711,129 @@ async function extractUrlPage(mode) {
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const isX = /(^|\.)(x\.com|twitter\.com)$/.test(location.hostname);
   const absolute = value => {
+    if (!value || /^(data:|blob:)/i.test(value)) return null;
     try { const u = new URL(value, location.href); return u.protocol === 'https:' ? u.href : null; } catch { return null; }
   };
-  const imageUrls = root => [...new Set([...root.querySelectorAll(isX ? '[data-testid="tweetPhoto"] img' : 'img')]
-    .map(img => absolute(img.currentSrc || img.src)).filter(Boolean))].slice(0, 8);
+  const schemas = [];
+  const walk = value => {
+    if (!value || typeof value !== 'object') return;
+    if (Array.isArray(value)) { value.forEach(walk); return; }
+    const types = [].concat(value['@type'] || []);
+    if (types.some(type => /^(NewsArticle|Article|BlogPosting)$/.test(type))) schemas.push(value);
+    if (value['@graph']) walk(value['@graph']);
+  };
+  for (const script of document.querySelectorAll('script[type="application/ld+json"]')) {
+    try { walk(JSON.parse(script.textContent)); } catch {}
+  }
+  const schema = schemas[0];
+  const unwanted = 'nav, header, footer, aside, script, style, noscript, [role="navigation"], .related-posts, .related-news, .advertisement';
+  const bodyText = root => {
+    const clone = root.cloneNode(true);
+    clone.querySelectorAll(unwanted).forEach(el => el.remove());
+    // innerText của node clone không render có thể rỗng: đọc từng block bằng textContent.
+    const blocks = [...clone.querySelectorAll('p, h1, h2, h3, li, blockquote')]
+      .filter(el => !el.parentElement?.closest('p, li, blockquote'))
+      .map(el => el.textContent.trim()).filter(Boolean);
+    return (blocks.length ? blocks.join('\n\n') : root.innerText || clone.textContent || '').trim();
+  };
+  const schemaImages = value => [].concat(value || []).flatMap(item => typeof item === 'string' ? [item] : item?.url || item?.contentUrl || []).map(absolute).filter(Boolean);
+  const imageUrls = root => {
+    const urls = [];
+    const add = value => { const url = absolute(value); if (url && !/\.svg(?:\?|$)/i.test(url)) urls.push(url); };
+    for (const img of root.querySelectorAll(isX ? '[data-testid="tweetPhoto"] img' : 'img')) {
+      if (img.closest('nav, header, footer, aside')) continue;
+      // Ưu tiên file thật thay cho placeholder lazy-load.
+      const lazy = img.getAttribute('data-src') || img.getAttribute('data-lazy-src') || img.getAttribute('data-original');
+      if (!lazy && img.naturalWidth && img.naturalWidth < 160) continue;
+      const srcset = img.getAttribute('data-srcset') || img.getAttribute('srcset');
+      if (lazy) add(lazy);
+      if (srcset) add(srcset.split(',').pop().trim().split(/\s+/)[0]);
+      add(img.currentSrc || img.getAttribute('src'));
+    }
+    if (!isX) {
+      for (const el of root.querySelectorAll('[style*="background"]')) {
+        const match = el.style.backgroundImage.match(/url\(["']?(.*?)["']?\)/);
+        if (match) add(match[1]);
+      }
+      schemaImages(schema?.image).forEach(add);
+      add(document.querySelector('meta[property="og:image"]')?.content);
+      add(document.querySelector('meta[name="twitter:image"]')?.content);
+    }
+    return [...new Set(urls)].slice(0, 8);
+  };
   if (mode === 'detail') {
     for (let i = 0; i < 15; i++) {
-      const articles = [...document.querySelectorAll('article')];
-      const root = isX
-        ? articles.find(a => [...a.querySelectorAll('a[href]')].some(a => new URL(a.href).pathname === location.pathname && a.querySelector('time')))
-        : document.querySelector('article, [itemprop="articleBody"], main');
-      if (root && (root.innerText || '').trim().length > 40) {
-        if (isX) {
+      if (isX) {
+        const root = [...document.querySelectorAll('article')].find(a => [...a.querySelectorAll('a[href]')].some(a => new URL(a.href).pathname === location.pathname && a.querySelector('time')));
+        if (root) {
           const more = root.querySelector('[data-testid="tweet-text-show-more-link"]');
           if (more) { more.click(); await sleep(1000); }
+          const text = root.querySelector('[data-testid="tweetText"]')?.innerText?.trim();
+          if (text) return { url: location.href, title: document.title, text, images: imageUrls(root) };
         }
-        const text = isX ? root.querySelector('[data-testid="tweetText"]')?.innerText : root.innerText;
-        const og = !isX && absolute(document.querySelector('meta[property="og:image"]')?.content);
-        return { url: location.href, title: document.title, text: (text || '').trim().slice(0, 20000), images: [...new Set([...imageUrls(root), ...(og ? [og] : [])])] };
+      } else {
+        const selectors = '[itemprop="articleBody"], .article-content, .article-body, .post-content, .entry-content, .content-detail, .detail-content, .content-post, .news-content, article';
+        const candidates = [...document.querySelectorAll(selectors)];
+        // Một số trang dùng div thay article/main; tìm vùng chứa h1 + nhiều đoạn văn.
+        let heading = document.querySelector('h1');
+        for (let depth = 0; heading && depth < 6; depth++, heading = heading.parentElement) {
+          if (!['BODY', 'HTML'].includes(heading.tagName) && heading.querySelectorAll('p').length >= 3) candidates.push(heading);
+        }
+        const ranked = [...new Set(candidates)].map(root => ({root, text:bodyText(root)}))
+          .filter(item => item.text.length > 80)
+          .sort((a,b) => {
+            const score = item => item.text.length - item.root.querySelectorAll('a').length * 80;
+            return score(b) - score(a);
+          });
+        let best = ranked[0];
+        if (!best && schema?.articleBody?.length > 80) best = { root: document.body, text:schema.articleBody };
+        if (!best) {
+          const main = document.querySelector('main, [role="main"]');
+          if (main && main.querySelector('h1') && main.querySelectorAll('p').length >= 3) best = {root:main,text:bodyText(main)};
+        }
+        if (best && best.text.length > 80) {
+          // Kích hoạt ảnh lazy-load trong phần nội dung trước khi thu URL ảnh.
+          const images = [...best.root.querySelectorAll('img')].slice(0, 8);
+          for (const image of images) { image.scrollIntoView({block:'center'}); await sleep(150); }
+          return { url:location.href, title:schema?.headline || document.querySelector('h1')?.innerText || document.title,
+            text:best.text.slice(0,20000), images:imageUrls(best.root), timestamp:Date.parse(schema?.datePublished || '') || 0 };
+        }
       }
       await sleep(700);
     }
-    throw new Error('Không đọc được nội dung bài: trang có thể yêu cầu đăng nhập hoặc không hỗ trợ cấu trúc này');
+    throw new Error('Không tìm được phần nội dung bài viết; trang có thể chưa tải, yêu cầu đăng nhập hoặc đang ở trang danh sách');
+  }
+  if (!isX && schema && document.querySelector('h1')) {
+    return [{url:location.href,date:Date.parse(schema.datePublished || '') || 0}];
   }
   const found = new Map();
-  for (let round = 0; round < 6; round++) {
-    const roots = [...document.querySelectorAll(isX ? 'article' : 'article, [itemtype*="BlogPosting"], [itemtype*="NewsArticle"], .post, .blog-post')];
-    for (const root of roots) {
+  const addLink = (link, root) => {
+    const url = absolute(link?.href);
+    if (!url || (!isX && new URL(url).origin !== location.origin)) return;
+    const parsed = new URL(url);
+    if (!isX && (parsed.pathname === '/' || /\/(tag|tags|category|author|search|login|dang-nhap)(\/|$)/i.test(parsed.pathname) || /\.(png|jpe?g|svg|webp|pdf)$/i.test(parsed.pathname))) return;
+    const date = Date.parse(root?.querySelector('time')?.dateTime || '');
+    if (!found.has(url)) found.set(url,{url,date:Number.isFinite(date)?date:0});
+  };
+  for (let round=0; round<6; round++) {
+    for (const root of document.querySelectorAll(isX ? 'article' : 'article, [itemtype*="BlogPosting"], [itemtype*="NewsArticle"], .post, .blog-post')) {
       if (isX && /pinned|đã ghim/i.test(root.querySelector('[data-testid="socialContext"]')?.innerText || '')) continue;
-      const link = isX ? [...root.querySelectorAll('a[href]')].find(a => a.querySelector('time') && /\/status\/\d+/.test(a.href))
+      const link = isX ? [...root.querySelectorAll('a[href]')].find(a=>a.querySelector('time') && /\/status\/\d+/.test(a.href))
         : root.querySelector('h1 a[href], h2 a[href], h3 a[href], a[rel="bookmark"], a[href]');
-      const url = absolute(link?.href);
-      if (!url || (!isX && new URL(url).origin !== location.origin)) continue;
-      const date = Date.parse(root.querySelector('time')?.dateTime || '');
-      found.set(url, { url, date: Number.isFinite(date) ? date : 0 });
+      addLink(link,root);
     }
-    window.scrollBy(0, Math.max(600, innerHeight * .8));
-    await sleep(900);
-  }
-  if (!found.size) {
-    // Trang danh sách dùng heading thay vì article.
-    for (const a of document.querySelectorAll('main h2 a[href], main h3 a[href]')) {
-      const url = absolute(a.href);
-      if (url && new URL(url).origin === location.origin) found.set(url, { url, date: 0 });
+    if (!isX) {
+      // Bao gồm a > h2/h3 và các card có ảnh + tiêu đề như trang chủ Coin68.
+      for (const link of document.querySelectorAll('a[href]')) {
+        if (link.closest('nav, header, footer, [role="navigation"]')) continue;
+        const text=(link.innerText || link.textContent || '').trim();
+        if (text.length < 25) continue;
+        if (link.querySelector('h2,h3,h4,img') || link.closest('h2,h3,h4') || text.length >= 45) addLink(link,link.closest('article') || link.parentElement);
+      }
     }
+    window.scrollBy(0,Math.max(600,innerHeight*.8)); await sleep(900);
   }
-  return [...found.values()].sort((a, b) => b.date - a.date).slice(0, 5);
+  return [...found.values()].sort((a,b)=>b.date-a.date).slice(0,5);
 }
 
 async function waitUrlScanTab(tabId) {
@@ -3805,7 +3865,7 @@ async function scanWebsiteUrl(rawUrl) {
         await chrome.tabs.update(tab.id, { url: link.url, active: true });
         const article = await read('detail');
         if (!article?.text) throw new Error('Bài không có nội dung văn bản');
-        articles.push({ ...article, timestamp: link.date || 0 });
+        articles.push({ ...article, timestamp: article.timestamp || link.date || 0 });
       } catch (error) { errors.push({ url: link.url, error: error.message }); }
     }
     if (!articles.length) throw new Error(errors.map(e => e.error).join('; ') || 'Không tìm thấy bài đăng');
@@ -3843,4 +3903,12 @@ function cryptoLengthRange(cfg) {
     throw new Error('Độ dài phải là số nguyên từ 1 đến 4000 ký tự, Từ không được lớn hơn Đến');
   }
   return { min, max };
+}
+
+// FileReader không tồn tại trong service worker Manifest V3.
+async function blobToDataUrl(blob) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i,i+8192));
+  return `data:${blob.type};base64,${btoa(binary)}`;
 }

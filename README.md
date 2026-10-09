@@ -62,3 +62,13 @@ chu kỳ quét sẽ cập nhật thời gian lướt theo lịch mới. Nếu t�
 có alarm kế tiếp, không lướt Home sau lần đăng thủ công.
 
 Content Crypto: bỏ chủ đề ưu tiên, vai trò, quy tắc thêm và gắn link nguồn cuối bài; giữ kho bài mẫu. Độ dài có Từ–Đến (ký tự), mặc định 200–270; kiểm tra khoảng trước khi tạo/đăng và yêu cầu AI viết lại nếu chưa đạt. Cấu hình cũ chỉ có tối đa được giữ tối đa, tối thiểu lấy giá trị nhỏ hơn giữa 200 và tối đa.
+
+Sửa quét website và lấy ảnh: bổ sung card link ngoài article/main, vùng div chứa
+h1 + đoạn văn, nội dung JSON-LD, ảnh lazy-load/data-src/srcset/background và
+og:image. Thay FileReader trong service worker bằng Blob.arrayBuffer + base64.
+Bấm Quét ngay để cấp quyền HTTPS cho website và CDN ảnh; Chrome sẽ hiển thị
+yêu cầu quyền rộng để tải được ảnh từ hostname khác nguồn tin.
+Đã chạy 11 kiểm thử Node và Chromium trên trang HTML thử nghiệm (card div,
+nội dung bài, ảnh lazy-load và OG). Chưa xác minh trực tiếp trên Coin68 vì
+proxy của môi trường trả 403 khi kết nối; không coi kiểm thử fixture là kiểm
+thử trang Coin68 thật.

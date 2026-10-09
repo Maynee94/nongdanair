@@ -2124,6 +2124,8 @@ function setCryptoBusy(busy) {
 // (cần thao tác người dùng); đã cấp 1 lần thì lượt chạy tự động sau này không cần hỏi lại.
 async function cryptoEnsureFeedPermissions() {
   const origins = [];
+  // Trang tin dùng CDN ảnh ngoài hostname của trang; cấp quyền từ nút Quét ngay.
+  if (document.getElementById('cryptoWebsiteUrls').value.trim()) origins.push('https://*/*');
   String([cryptoSplitSources(document.getElementById('cryptoSources').value).feeds, document.getElementById('cryptoWebsiteUrls').value].filter(Boolean).join('\n')).split(/[\n,;]+/).forEach((raw) => {
     try {
       const u = new URL(raw.trim());
@@ -2142,7 +2144,7 @@ async function cryptoEnsureFeedPermissions() {
 async function runCrypto() {
   const dryRun = document.getElementById('cryptoDraftToggle').checked;
   const granted = await cryptoEnsureFeedPermissions();
-  if (!granted) setCryptoStatus('Bạn chưa cho phép truy cập trang RSS - tin web sẽ không tải được (tin từ X vẫn chạy).');
+  if (!granted) setCryptoStatus('Chưa được cấp quyền website và máy chủ ảnh; nguồn web có thể không tải được.');
   if (!await saveCryptoSettingsAndApply(true)) return;
   setCryptoBusy(true);
   setCryptoStatus(dryRun ? 'Đang chạy thử...' : 'Đang quét & đăng...');
