@@ -60,3 +60,5 @@ thời gian chờ. Khi quét lần sau, dừng lướt nhưng giữ tab để d�
 và đăng. Tắt tự động hoặc bấm Dừng sẽ kết thúc lướt và đóng tab nghỉ. Thay đổi
 chu kỳ quét sẽ cập nhật thời gian lướt theo lịch mới. Nếu tự động tắt hoặc không
 có alarm kế tiếp, không lướt Home sau lần đăng thủ công.
+
+Content Crypto: bỏ chủ đề ưu tiên, vai trò, quy tắc thêm và gắn link nguồn cuối bài; giữ kho bài mẫu. Độ dài có Từ–Đến (ký tự), mặc định 200–270; kiểm tra khoảng trước khi tạo/đăng và yêu cầu AI viết lại nếu chưa đạt. Cấu hình cũ chỉ có tối đa được giữ tối đa, tối thiểu lấy giá trị nhỏ hơn giữa 200 và tối đa.

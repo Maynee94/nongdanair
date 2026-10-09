@@ -116,3 +116,25 @@ test('dừng trong lúc AI đang sinh reply thì không gửi comment hoặc lik
   await c.hbInteractVisiblePost(token);
   assert.equal(sent,0); assert.ok(token.examined.has('123'));
 });
+test('khoảng độ dài từ–đến hợp lệ và tương thích cấu hình cũ', () => {
+  const c = vm.createContext({});
+  const s=fs.readFileSync(path.join(root,'background.js'),'utf8');
+  vm.runInContext(s.slice(s.indexOf('function cryptoLengthRange(')),c);
+  assert.equal(c.cryptoLengthRange({minChars:100,maxChars:250}).min,100);
+  assert.equal(c.cryptoLengthRange({maxChars:150}).min,150);
+  assert.throws(()=>c.cryptoLengthRange({minChars:300,maxChars:200}),/Độ dài/);
+  assert.throws(()=>c.cryptoLengthRange({minChars:0,maxChars:270}),/Độ dài/);
+});
+test('AI thử lại khi thiếu độ dài; bỏ các cài đặt đã xoá và không gắn link', async () => {
+  const prompts=[];
+  const c=vm.createContext({cryptoSamplesOf:()=>[],cryptoCleanOutput:t=>t,cryptoNormalizeBreaks:t=>t,cryptoSimilarity:()=>0,
+    backgroundCallChatAI:async(sys)=>{prompts.push(sys);return prompts.length===1?'ngắn':'a'.repeat(120);}});
+  const s=fs.readFileSync(path.join(root,'background.js'),'utf8');
+  vm.runInContext(s.slice(s.indexOf('function cryptoLengthRange(')),c);
+  vm.runInContext(s.slice(s.indexOf('async function cryptoRewrite('),s.indexOf('// ---------- Lưu trạng thái')),c);
+  const result=await c.cryptoRewrite({minChars:100,maxChars:150,persona:'OLD_PERSONA',extraRules:'OLD_RULE',addSourceLink:true},
+    {source:'source',url:'https://example.com',text:'Dữ kiện nguồn'},[]);
+  assert.equal(prompts.length,2); assert.equal(result.text.length,120);
+  assert.equal(prompts[0].includes('OLD_PERSONA'),false); assert.equal(prompts[0].includes('OLD_RULE'),false);
+  assert.equal(result.text.includes('https://'),false);
+});

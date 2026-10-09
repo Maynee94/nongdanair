@@ -1156,21 +1156,14 @@ input[type="file"] { display: none; }
       <!-- SUB-TAB: CONTENT CRYPTO -->
       <div id="subtab-crypto" class="subtab-content active">
           <div class="card">
-            <h3>1. Nguồn tin</h3>
             <div class="form-group">
-              <label for="cryptoWebsiteUrls">URL website cần quét (mỗi dòng 1 URL HTTPS)</label>
+              <label for="cryptoWebsiteUrls">Nhập Link Web Để Quét</label>
               <textarea id="cryptoWebsiteUrls" placeholder="https://example.com/blog"></textarea>
-              <p class="hint-text">Quét tối đa 5 bài mỗi URL, đọc nội dung và lấy ảnh. Bấm Quét ngay bên dưới; chế độ duyệt nháp vẫn áp dụng.</p>
             </div>
             <p class="hint-text">Khi bật tự động quét: sau khi đăng thành công, tab sẽ lướt Home đến lượt quét tiếp theo rồi dùng lại tab đó để tiếp tục. Bấm Dừng để kết thúc lướt Home.</p>
             <div class="form-group">
-              <label for="cryptoSources">Nguồn tin cần quét (mỗi dòng 1 nguồn: tài khoản X như @whale_alert, hoặc link RSS/Atom của trang tin)</label>
-              <textarea id="cryptoSources" style="min-height:110px;" placeholder="@whale_alert&#10;WatcherGuru&#10;https://www.coindesk.com/arc/outboundfeeds/rss/&#10;https://cointelegraph.com/rss"></textarea>
-              <p class="hint-text">Mỗi tài khoản X lấy 3 bài mới nhất (bỏ bài ghim). Lần đầu dùng link RSS mới, Chrome sẽ hỏi quyền truy cập trang đó - bấm "Cho phép" để extension tải được tin.</p>
-            </div>
-            <div class="form-group">
-              <label for="cryptoFocus">Chủ đề ưu tiên (tuỳ chọn, để AI chọn tin hợp gu)</label>
-              <input type="text" id="cryptoFocus" placeholder="Ví dụ: Bitcoin, ETF, DeFi, hack/exploit, tin sàn lớn">
+              <label for="cryptoSources">Nhập Username X Để Quét</label>
+              <textarea id="cryptoSources" style="min-height:110px;" placeholder="@whale_alert&#10;WatcherGuru"></textarea>
             </div>
             <div class="form-group">
               <label for="cryptoKwExclude">Bỏ tin có chứa từ khoá (cách nhau bằng dấu phẩy)</label>
@@ -1179,11 +1172,6 @@ input[type="file"] { display: none; }
           </div>
 
           <div class="card">
-            <h3>2. Giọng văn của bạn</h3>
-            <div class="form-group">
-              <label for="cryptoPersona">Vai trò / tính cách người viết</label>
-              <textarea id="cryptoPersona" placeholder="Ví dụ: Bạn là Linz, trader nhỏ lẻ ở Việt Nam, nói chuyện thẳng, hơi hoài nghi, hay nhắc rủi ro..."></textarea>
-            </div>
             <div class="form-group">
               <label for="cryptoSample">Bài đăng mẫu (mỗi lần dán 1 bài nguyên vẹn kể cả xuống dòng, bấm Thêm để lưu; ô này sẽ tự làm trống)</label>
               <textarea id="cryptoSample" style="min-height:100px;" placeholder="Dán 1 bài mẫu vào đây (có thể nhiều dòng), rồi bấm Thêm..."></textarea>
@@ -1202,19 +1190,12 @@ input[type="file"] { display: none; }
               <input type="text" id="cryptoLanguage" placeholder="Tiếng Việt">
             </div>
             <div class="form-group">
-              <label for="cryptoExtraRules">Quy tắc thêm (tuỳ chọn, mỗi dòng 1 quy tắc)</label>
-              <textarea id="cryptoExtraRules" placeholder="Luôn xưng &quot;mình&quot;&#10;Không dùng hashtag"></textarea>
-            </div>
-            <div class="form-group">
-              <label for="cryptoMaxChars">Độ dài tối đa mỗi bài (ký tự; tài khoản thường là 280, Premium có thể cao hơn)</label>
-              <input type="text" id="cryptoMaxChars" placeholder="270">
-            </div>
-            <div class="form-group toggle-row">
-              <label class="section-label" for="cryptoSourceLinkToggle">Gắn link nguồn cuối bài</label>
-              <label class="toggle-switch">
-                <input type="checkbox" id="cryptoSourceLinkToggle">
-                <span class="toggle-slider"></span>
-              </label>
+              <label for="cryptoMinChars">Độ Dài Bài Đăng</label>
+              <div class="two-col">
+                <div class="col"><input type="number" id="cryptoMinChars" min="1" max="4000" placeholder="Từ" aria-label="Độ dài tối thiểu (ký tự)"></div>
+                <span aria-hidden="true">–</span>
+                <div class="col"><input type="number" id="cryptoMaxChars" min="1" max="4000" placeholder="Đến" aria-label="Độ dài tối đa (ký tự)"></div>
+              </div>
             </div>
             <div class="form-group toggle-row">
               <label class="section-label" for="cryptoCopyImageToggle">Copy ảnh từ bài gốc (nếu có)</label>
@@ -1226,7 +1207,7 @@ input[type="file"] { display: none; }
           </div>
 
           <div class="card">
-            <h3>3. Lịch &amp; giới hạn</h3>
+            <h3>Lịch &amp; giới hạn</h3>
             <div class="form-group toggle-row">
               <label class="section-label" for="cryptoAutoToggle">Tự động quét &amp; đăng định kỳ</label>
               <label class="toggle-switch">

@@ -2346,23 +2346,23 @@ const CRYPTO_DEFAULT_CFG = {
   accounts: '',
   feeds: '',
   websiteUrls: '',
-  focus: '',
   keywordsExclude: 'giveaway, airdrop, follow + rt, whitelist, referral',
-  persona: '',
   voiceSamples: '',
   voiceSampleList: [],
   language: 'Tiếng Việt',
-  extraRules: '',
   maxPostsPerDay: 8,
   draftMode: true,
+  minChars: 200,
   maxChars: 270,
-  addSourceLink: false,
   copyImage: true,
 };
 
 async function cryptoGetCfg() {
   const s = await chrome.storage.local.get(CRYPTO_CFG_KEY);
-  return { ...CRYPTO_DEFAULT_CFG, ...(s[CRYPTO_CFG_KEY] || {}) };
+  const saved = s[CRYPTO_CFG_KEY] || {};
+  const cfg = { ...CRYPTO_DEFAULT_CFG, ...saved };
+  if (saved.minChars === undefined) cfg.minChars = Math.min(200, Number(cfg.maxChars) || 270);
+  return cfg;
 }
 
 function cryptoNum(v, def, min, max) {
@@ -2558,8 +2558,7 @@ function cryptoParseJson(raw) {
 // AI chọn các tin đáng đăng. Trả { picks, rejected, aiOk }: rejected = tin AI chủ động loại (để khỏi xét lại mãi).
 async function cryptoSelect(cfg, cands, limit) {
   const list = cands.map((c, i) => `[${i}] (${c.source}) ${c.text.replace(/\s+/g, ' ').slice(0, 240)}`).join('\n');
-  const focus = String(cfg.focus || '').trim();
-  const sys = `Bạn là biên tập viên tin crypto. Từ danh sách tin dưới đây, chọn TỐI ĐA ${limit} tin NÊN đăng: tin có thông tin cụ thể, mới, đáng chú ý với người theo dõi crypto.${focus ? ` Ưu tiên chủ đề: ${focus}.` : ''} LOẠI các tin: quảng cáo/shill token, airdrop/giveaway kêu gọi follow-retweet, bài chỉ có hình ảnh hoặc không đủ thông tin, bình luận chung chung không có tin, và tin trùng cùng một sự kiện (chỉ giữ 1 tin rõ ràng nhất). CHỈ trả về đúng 1 dòng JSON: {"picks":[số thứ tự,...]} sắp theo độ ưu tiên giảm dần; trả {"picks":[]} nếu không tin nào đáng đăng.`;
+  const sys = `Bạn là biên tập viên tin crypto. Từ danh sách tin dưới đây, chọn TỐI ĐA ${limit} tin NÊN đăng: tin có thông tin cụ thể, mới, đáng chú ý với người theo dõi crypto. LOẠI các tin: quảng cáo/shill token, airdrop/giveaway kêu gọi follow-retweet, bài chỉ có hình ảnh hoặc không đủ thông tin, bình luận chung chung không có tin, và tin trùng cùng một sự kiện (chỉ giữ 1 tin rõ ràng nhất). CHỈ trả về đúng 1 dòng JSON: {"picks":[số thứ tự,...]} sắp theo độ ưu tiên giảm dần; trả {"picks":[]} nếu không tin nào đáng đăng.`;
   try {
     const raw = await backgroundCallChatAI(sys, list, 300);
     const j = cryptoParseJson(raw);
@@ -2617,10 +2616,8 @@ async function cryptoRewrite(cfg, cand, recentPosted) {
   // Kho > 12 bài thì mỗi lượt random 12 bài (giống Nhiệm vụ) để giọng văn đa dạng, đỡ tốn token.
   const allSamples = cryptoSamplesOf(cfg);
   const samples = allSamples.length > 12 ? [...allSamples].sort(() => Math.random() - 0.5).slice(0, 12) : allSamples;
-  const persona = String(cfg.persona || '').trim() || 'Bạn là một người viết content crypto cá nhân trên X.';
-  const maxChars = Math.round(cryptoNum(cfg.maxChars, 270, 80, 4000));
-  const link = cfg.addSourceLink && cand.url ? cand.url : '';
-  const textLimit = link ? maxChars - 25 : maxChars; // X tính mọi link là 23 ký tự + xuống dòng
+  const persona = 'Bạn là một người viết content crypto cá nhân trên X.';
+  const { min, max } = cryptoLengthRange(cfg);
   const recentBlock = recentPosted.length
     ? `\n\nCÁC BÀI BẠN VỪA ĐĂNG (không lặp ý, không lặp cách mở bài):\n${recentPosted.slice(0, 6).map((t, i) => `${i + 1}. ${t.replace(/\s+/g, ' ').slice(0, 160)}`).join('\n')}`
     : '';
@@ -2630,7 +2627,6 @@ async function cryptoRewrite(cfg, cand, recentPosted) {
   const lineBreakBlock = samples.some((s) => s.includes('\n'))
     ? `\n- Bài mẫu có xuống dòng/dòng trống giữa các ý: bài bạn viết cũng PHẢI xuống dòng thật theo cách tương tự, mỗi ý 1 dòng/đoạn ngắn, KHÔNG viết dồn thành 1 khối liền.`
     : '';
-  const extra = String(cfg.extraRules || '').trim();
   const sys = `${persona}
 
 NHIỆM VỤ: viết lại tin dưới đây thành ĐÚNG 1 bài đăng trên X, bằng giọng của chính bạn. Ngôn ngữ: ${cfg.language || 'Tiếng Việt'}.
@@ -2640,27 +2636,26 @@ QUY TẮC BẮT BUỘC:
 - Diễn đạt lại bằng ý của bạn, KHÔNG sao chép câu chữ của nguồn; có thể thêm 1 nhận xét/góc nhìn ngắn.
 - Chỉ dùng thông tin CÓ TRONG tin gốc. TUYỆT ĐỐI không bịa số liệu, giá, tên, ngày tháng, trích dẫn.
 - Không khuyên mua/bán, không hứa lợi nhuận, không kiểu "chắc chắn tăng", "all-in", "x100". Được phép nêu rủi ro/nghi vấn.
-- Tối đa ${textLimit} ký tự (tính cả khoảng trắng và hashtag). Dùng cashtag như $BTC khi hợp lý, tối đa 2 cashtag/hashtag.
+- Từ ${min} đến ${max} ký tự (tính cả khoảng trắng và hashtag). Dùng cashtag như $BTC khi hợp lý, tối đa 2 cashtag/hashtag.
 - Xuống dòng bằng ký tự xuống dòng THẬT. TUYỆT ĐỐI không viết thẻ HTML như <br>, <p>, \\n dạng chữ.
-- Không mở đầu bằng "Breaking"/"Tin nóng", không dồn emoji, không kết bài bằng câu hỏi kêu gọi tương tác sáo rỗng.${lineBreakBlock}${extra ? `\n- ${extra.replace(/\n+/g, '\n- ')}` : ''}${sampleBlock}${recentBlock}
+- Không mở đầu bằng "Breaking"/"Tin nóng", không dồn emoji, không kết bài bằng câu hỏi kêu gọi tương tác sáo rỗng.${lineBreakBlock}${sampleBlock}${recentBlock}
 
 CHỈ trả về đúng nội dung bài đăng, không giải thích, không đặt trong dấu ngoặc kép.`;
   const user = `NGUỒN: ${cand.source}${cand.title ? `\nTIÊU ĐỀ: ${cand.title}` : ''}\nNỘI DUNG GỐC:\n${cryptoNormalizeBreaks(cand.text).slice(0, 1500)}`;
 
-  let text = cryptoCleanOutput(await backgroundCallChatAI(sys, user, 500));
-  if (text.length > textLimit) {
-    const again = cryptoCleanOutput(await backgroundCallChatAI(
-      `Rút gọn bài đăng sau xuống tối đa ${textLimit} ký tự, giữ nguyên giọng văn và ý chính, không thêm thông tin mới. CHỈ trả về bài đã rút gọn.`,
-      text, 400));
-    text = again;
+  let text = cryptoCleanOutput(await backgroundCallChatAI(sys, user, Math.max(500, max * 2)));
+  for (let attempt = 0; attempt < 2 && (text.length < min || text.length > max); attempt++) {
+    text = cryptoCleanOutput(await backgroundCallChatAI(
+      `${sys}\nBản trước có ${text.length} ký tự, chưa đúng khoảng ${min}-${max}. Viết lại trong khoảng đó, chỉ dùng dữ kiện nguồn, không thêm thông tin mới.`,
+      user, Math.max(500, max * 2)));
   }
   if (!text) return { error: 'AI trả về nội dung rỗng' };
-  if (text.length > textLimit) return { error: `bài dài ${text.length} ký tự (> ${textLimit}) dù đã rút gọn` };
+  if (text.length < min || text.length > max) return { error: `bài dài ${text.length} ký tự, ngoài khoảng ${min}-${max} sau khi thử lại` };
   if (/^(xin lỗi|tôi không thể|i can't|i cannot|sorry)/i.test(text)) return { error: 'AI từ chối viết bài này' };
   for (const old of recentPosted) {
     if (cryptoSimilarity(text, old) > 0.6) return { error: 'quá giống 1 bài vừa đăng', similar: true };
   }
-  return { text: link ? `${text}\n\n${link}` : text };
+  return { text };
 }
 
 // ---------- Lưu trạng thái ----------
@@ -2728,7 +2723,7 @@ async function handleCryptoRun({ dryRun } = {}) {
     const websites = cryptoLines(cfg.websiteUrls).filter(u => /^https:\/\//i.test(u));
     const feeds = cryptoLines(cfg.feeds).filter((u) => /^https?:\/\//i.test(u));
     if (!accounts.length && !feeds.length && !websites.length) throw new Error('Chưa có nguồn tin: hãy nhập ít nhất 1 tài khoản X hoặc 1 link RSS.');
-    if (!String(cfg.persona || '').trim() && !cryptoSamplesOf(cfg).length) throw new Error('Chưa có giọng văn: hãy nhập vai trò hoặc dán vài bài mẫu của bạn.');
+    cryptoLengthRange(cfg);
 
     const state = await cryptoLoadState();
     const maxPerDay = Math.round(cryptoNum(cfg.maxPostsPerDay, 8, 1, 100));
@@ -2874,10 +2869,10 @@ async function handleCryptoPostDraft({ id, text }) {
     const state = await cryptoLoadState();
     const draft = state.drafts.find((d) => d.id === id);
     if (!draft) throw new Error('Không tìm thấy bản nháp (có thể đã đăng hoặc đã xoá).');
-    const finalText = cryptoNormalizeBreaks(String(text || draft.text));
+    const finalText = cleanPostPunctuation(cryptoNormalizeBreaks(String(text || draft.text)));
     if (!finalText) throw new Error('Bản nháp đang trống.');
-    const hardLimit = Math.max(280, Math.round(cryptoNum(cfg.maxChars, 270, 80, 4000)));
-    if (finalText.length > hardLimit) throw new Error(`Bài dài ${finalText.length} ký tự, vượt giới hạn ${hardLimit}.`);
+    const { min, max } = cryptoLengthRange(cfg);
+    if (finalText.length < min || finalText.length > max) throw new Error(`Bài dài ${finalText.length} ký tự, ngoài khoảng ${min}-${max}.`);
     await pauseAllFlowsForScheduledPost(); paused = true;
     await cryptoLog('Đăng bản nháp đã duyệt...');
     const draftImg = cfg.copyImage === false ? null : (cryptoImagesOf(draft).length ? cryptoImagesOf(draft) : null);
@@ -3840,3 +3835,12 @@ chrome.runtime.onMessage.addListener((request, sender, respond) => {
 });
 
 // END URL_SCAN
+
+function cryptoLengthRange(cfg) {
+  const min = Number(cfg.minChars ?? Math.min(200, Number(cfg.maxChars) || 270));
+  const max = Number(cfg.maxChars ?? 270);
+  if (!Number.isInteger(min) || !Number.isInteger(max) || min < 1 || max > 4000 || min > max) {
+    throw new Error('Độ dài phải là số nguyên từ 1 đến 4000 ký tự, Từ không được lớn hơn Đến');
+  }
+  return { min, max };
+}

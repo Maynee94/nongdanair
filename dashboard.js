@@ -1995,18 +1995,17 @@ async function getActiveGalleryImage(storageKey) {
 
 // ============== CONTENT CRYPTO: QUÉT TIN (X + RSS) -> AI VIẾT LẠI THEO GIỌNG CỦA TÔI -> ĐĂNG X ==============
 const CRYPTO_DEFAULTS = {
-  enabled: false, pollMinutes: 60, accounts: '', feeds: '', websiteUrls: '', focus: '',
+  enabled: false, pollMinutes: 60, accounts: '', feeds: '', websiteUrls: '',
   keywordsExclude: 'giveaway, airdrop, follow + rt, whitelist, referral',
-  persona: '', voiceSamples: '', voiceSampleList: [], language: 'Tiếng Việt', extraRules: '',
-  maxPostsPerDay: 8, maxChars: 270, addSourceLink: false, copyImage: true, draftMode: true,
+  voiceSamples: '', voiceSampleList: [], language: 'Tiếng Việt',
+  maxPostsPerDay: 8, minChars: 200, maxChars: 270, copyImage: true, draftMode: true,
 };
 // [id ô nhập, khoá trong cryptoCfg]
 const CRYPTO_TEXT_FIELDS = [
   ['cryptoWebsiteUrls', 'websiteUrls'],
-  ['cryptoFocus', 'focus'],
   ['cryptoKwExclude', 'keywordsExclude'],
-  ['cryptoPersona', 'persona'], ['cryptoLanguage', 'language'],
-  ['cryptoExtraRules', 'extraRules'], ['cryptoMaxChars', 'maxChars'], ['cryptoPollInput', 'pollMinutes'],
+['cryptoLanguage', 'language'],
+  ['cryptoMinChars', 'minChars'], ['cryptoMaxChars', 'maxChars'], ['cryptoPollInput', 'pollMinutes'],
   ['cryptoMaxPerDay', 'maxPostsPerDay'],
 ];
 
@@ -2043,10 +2042,10 @@ function cryptoSplitSources(text) {
 
 function cryptoFillForm(saved) {
   const cfg = { ...CRYPTO_DEFAULTS, ...(saved || {}) };
+  if (saved?.minChars === undefined) cfg.minChars = Math.min(200, Number(cfg.maxChars) || 270);
   CRYPTO_TEXT_FIELDS.forEach(([id, key]) => { document.getElementById(id).value = cfg[key] === undefined ? '' : cfg[key]; });
   document.getElementById('cryptoSources').value = [cfg.accounts, cfg.feeds].map((s) => String(s || '').trim()).filter(Boolean).join('\n');
   document.getElementById('cryptoAutoToggle').checked = !!cfg.enabled;
-  document.getElementById('cryptoSourceLinkToggle').checked = !!cfg.addSourceLink;
   document.getElementById('cryptoCopyImageToggle').checked = cfg.copyImage !== false;
   document.getElementById('cryptoDraftToggle').checked = cfg.draftMode !== false;
   cryptoSamples = cryptoSamplesFromCfg(cfg);
@@ -2058,10 +2057,13 @@ function cryptoReadForm() {
   CRYPTO_TEXT_FIELDS.forEach(([id, key]) => { cfg[key] = document.getElementById(id).value.trim(); });
   Object.assign(cfg, cryptoSplitSources(document.getElementById('cryptoSources').value));
   cfg.enabled = document.getElementById('cryptoAutoToggle').checked;
-  cfg.addSourceLink = document.getElementById('cryptoSourceLinkToggle').checked;
   cfg.copyImage = document.getElementById('cryptoCopyImageToggle').checked;
   cfg.draftMode = document.getElementById('cryptoDraftToggle').checked;
   cfg.voiceSampleList = cryptoSamples.slice();
+  const min = Number(cfg.minChars), max = Number(cfg.maxChars);
+  if (!Number.isInteger(min) || !Number.isInteger(max) || min < 1 || max > 4000 || min > max) {
+    throw new Error('Độ dài phải là số nguyên từ 1 đến 4000 ký tự, Từ không được lớn hơn Đến');
+  }
   cfg.voiceSamples = ''; // chuỗi cũ đã được chuyển sang voiceSampleList
   return cfg;
 }
@@ -2080,12 +2082,14 @@ function setCryptoStatus(text) {
 }
 
 async function saveCryptoSettingsAndApply(silent) {
-  const cfg = cryptoReadForm();
+  let cfg;
+  try { cfg = cryptoReadForm(); } catch (error) { setCryptoStatus(error.message); showSavedToast(error.message); return false; }
   await chrome.storage.local.set({ cryptoCfg: cfg });
   const res = await chrome.runtime.sendMessage({ action: 'CRYPTO_APPLY_SCHEDULE' }).catch((e) => ({ success: false, error: e.message }));
   if (res && res.success === false) { showSavedToast(`Lỗi đặt lịch: ${res.error}`); return; }
   if (!silent) showSavedToast(cfg.enabled ? 'Đã lưu & bật Content Crypto tự động' : 'Đã lưu cài đặt Content Crypto');
   refreshCryptoNextRunText();
+  return true;
 }
 
 function renderCryptoDrafts(drafts) {
@@ -2139,7 +2143,7 @@ async function runCrypto() {
   const dryRun = document.getElementById('cryptoDraftToggle').checked;
   const granted = await cryptoEnsureFeedPermissions();
   if (!granted) setCryptoStatus('Bạn chưa cho phép truy cập trang RSS - tin web sẽ không tải được (tin từ X vẫn chạy).');
-  await saveCryptoSettingsAndApply(true);
+  if (!await saveCryptoSettingsAndApply(true)) return;
   setCryptoBusy(true);
   setCryptoStatus(dryRun ? 'Đang chạy thử...' : 'Đang quét & đăng...');
   const res = await chrome.runtime.sendMessage({ action: 'CRYPTO_RUN_NOW', dryRun }).catch((e) => ({ success: false, error: e.message }));
@@ -2157,7 +2161,7 @@ async function runCrypto() {
 }
 
 function bindCryptoControls() {
-  CRYPTO_TEXT_FIELDS.map(([id]) => id).concat(['cryptoSources', 'cryptoAutoToggle', 'cryptoSourceLinkToggle', 'cryptoCopyImageToggle', 'cryptoDraftToggle']).forEach((id) => {
+  CRYPTO_TEXT_FIELDS.map(([id]) => id).concat(['cryptoSources', 'cryptoAutoToggle', 'cryptoCopyImageToggle', 'cryptoDraftToggle']).forEach((id) => {
     document.getElementById(id).addEventListener('change', () => saveCryptoSettingsAndApply(false));
   });
   // ----- Kho bài mẫu (giống Nhiệm vụ): Thêm / Xem-Ẩn / Xoá từng bài / Xoá hết -----
