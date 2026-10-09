@@ -4,9 +4,15 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const root = path.join(__dirname, '..');
-function load(file, context) { vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context); }
+function loadSection(file, marker, context) {
+  const source = fs.readFileSync(path.join(root, file), 'utf8');
+  const start = `// BEGIN ${marker}`;
+  const end = `// END ${marker}`;
+  assert.ok(source.includes(start) && source.includes(end));
+  vm.runInContext(source.slice(source.indexOf(start) + start.length, source.indexOf(end)), context);
+}
 test('lọc dấu câu giữ URL, email, số thập phân, viết tắt và xuống dòng', () => {
-  const c = vm.createContext({}); load('post_text.js', c);
+  const c = vm.createContext({}); loadSection('background.js', 'POST_TEXT_HELPER', c);
   assert.equal(c.cleanPostPunctuation('Giá 3.14 USD. câu tiếp — có ảnh.\n\nXem https://example.com/a.b và a.b@example.com.\nU.S. tăng!'),
     'Giá 3.14 USD câu tiếp, có ảnh\n\nXem https://example.com/a.b và a.b@example.com\nU.S. tăng!');
 });
@@ -37,7 +43,7 @@ test('quét URL mở từng bài và đóng đúng tab riêng', async () => {
     scripting: { executeScript: async args => [{result: args.args[0] === 'list' ? [{url:'https://example.com/new'}, {url:'https://example.com/older'}] : {text:'Nội dung đầy đủ', images:['https://example.com/image.jpg']}}] },
     runtime: { onMessage: { addListener: fn => listener = fn } }
   }});
-  load('url_scan.js', c);
+  loadSection('background.js', 'URL_SCAN', c);
   const result = await c.scanWebsiteUrl('https://example.com/blog');
   assert.equal(result.articles.length, 2); assert.deepEqual(visited, ['https://example.com/new', 'https://example.com/older']); assert.deepEqual(removed, [12]);
   await assert.rejects(c.scanWebsiteUrl('http://example.com'), /HTTPS/);
